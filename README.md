@@ -8,7 +8,7 @@
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg?style=flat-square)](https://github.com/YOUR_GITHUB_USERNAME/hashish/CONTRIBUTING.md)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/hashish/main/banner.txt" alt="Hashish Banner" width="600">
+  <img src="https://github.com/Karim93160/Dark-Web/blob/e86debecc2b826d0743a21cea883812e31482fc2/Screenshot_20250508_014648_Termux.jpg" alt="Hashish Banner" width="600">
 </p>
 
 > ⚠️ **Ceci est un outil éthique destiné aux tests de sécurité et à l'éducation. Toute utilisation malveillante est strictement interdite.** ⚠️
