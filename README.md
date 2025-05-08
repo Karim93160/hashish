@@ -62,7 +62,7 @@ Suivez ces étapes pour installer Hashish sur votre système Termux ou Linux :
 
 4.  **Exécuter le script d'installation :**
     ```bash
-    ./install.sh
+    ./installer.sh
     ```
 
     Ce script va :
