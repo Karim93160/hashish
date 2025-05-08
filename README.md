@@ -21,13 +21,16 @@ Notre objectif est de fournir une boîte à outils polyvalente et facile à util
 
 ## ✨ Fonctionnalités Principales
 
- **Hash Cracker :** Déchiffrez différents types de hachages en utilisant des techniques courantes.
+ **Hash Cracker :** 
+ Déchiffrez différents types de hachages en utilisant des techniques courantes.
 
  
- **Web Scanner :** Effectuez des analyses de base de sécurité sur des sites web et des adresses IP.
+ **Web Scanner :** 
+ Effectuez des analyses de base de sécurité sur des sites web et des adresses IP.
 
  
- **Reconnaissance :** Collectez des informations sur des cibles en utilisant diverses techniques de reconnaissance réseau.
+ **Reconnaissance :** 
+ Collectez des informations sur des cibles en utilisant diverses techniques de reconnaissance réseau.
 
  
  **OSINT (Open-Source Intelligence) :** Rassemblez des informations accessibles publiquement sur des cibles spécifiques.
