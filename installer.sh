@@ -23,7 +23,7 @@ if [ ! -d "$REPO_PATH" ]; then
 fi
 
 # Vérifier si le chemin du dépôt est valide et contient le script hashish.py
-if [ ! -f "./hashish.py" ]; then
+if [ ! -f "$REPO_PATH/hashish.py" ]; then
   echo -e "${RED}Erreur : Le chemin courant est invalide ou ne contient pas le script 'hashish.py'.${NC}"
   exit 1
 fi
@@ -37,9 +37,9 @@ fi
 # Déplacer les fichiers de modules vers le dossier 'modules' (dans le dépôt)
 MODULES=("hashcracker.py" "webscanner.py" "recon.py" "osint.py")
 for module in "${MODULES[@]}"; do
-  if [ -f "./$module" ]; then
+  if [ -f "$REPO_PATH/$module" ]; then
     echo -e "${BLUE}Déplacement de '$module' vers '$REPO_PATH/modules'...${NC}"
-    mv "./$module" "$REPO_PATH/modules/"
+    mv "$REPO_PATH/$module" "$REPO_PATH/modules/"
   elif [ -f "$REPO_PATH/modules/$module" ]; then
     echo -e "${GREEN}Le module '$module' est déjà dans le dossier 'modules'.${NC}"
   else
@@ -48,9 +48,9 @@ for module in "${MODULES[@]}"; do
 done
 
 # Rendre le script 'hashish.py' exécutable dans le répertoire du dépôt
-if [ -f "./hashish.py" ]; then
+if [ -f "$REPO_PATH/hashish.py" ]; then
   echo -e "${BLUE}Rend le script './hashish.py' exécutable dans le dépôt...${NC}"
-  chmod +x "./hashish.py"
+  chmod +x "$REPO_PATH/hashish.py"
 else
   echo -e "${RED}Le script 'hashish.py' est introuvable dans le répertoire courant.${NC}"
   exit 1
@@ -75,63 +75,69 @@ echo -e "${YELLOW}  - curl${NC}"
 echo -e "${YELLOW}  - shodan (et configurez votre clé API avec 'shodan init <API_KEY>')${NC}"
 echo -e "${YELLOW}  Sans ces outils, certaines fonctionnalités de RECON ne fonctionneront pas.${NC}"
 
-# Copier les modules vers le répertoire bin
-echo -e "${BLUE}\nCopie des modules vers '$INSTALL_DIR' pour une utilisation globale...${NC}"
-for module in "${MODULES[@]}"; do
-  if [ -f "$REPO_PATH/modules/$module" ]; then
-    echo -e "${BLUE}Copie de '$module' vers '$INSTALL_DIR/$module'...${NC}"
-    cp "$REPO_PATH/modules/$module" "$INSTALL_DIR/$module"
-    chmod +x "$INSTALL_DIR/$module" # Rendre les modules exécutables (même si ce sont des librairies)
-  else
-    echo -e "${YELLOW}Le module '$module' est introuvable dans le dépôt.${NC}"
+# Exportation du contenu de hashish vers /usr/bin/
+echo -e "${BLUE}\nEXPORTATION du contenu de '$REPO_PATH' vers '$INSTALL_DIR' (via liens symboliques)...${NC}"
+for item in "$REPO_PATH"/*; do
+  base_name=$(basename "$item")
+  link_path="$INSTALL_DIR/$base_name"
+  if [ -e "$link_path" ]; then
+    echo -e "${YELLOW}Le fichier ou répertoire '$link_path' existe déjà. Suppression...${NC}"
+    rm -rf "$link_path"
+  fi
+  echo -e "${BLUE}Création du lien symbolique '$link_path' -> '$item'...${NC}"
+  ln -s "$item" "$link_path"
+  if [[ "$base_name" == "hashish.py" ]]; then
+    echo -e "${BLUE}Rend './hashish.py' exécutable dans '$INSTALL_DIR'...${NC}"
+    chmod +x "$link_path"
   fi
 done
 
-# Tenter de rendre 'hashish' accessible globalement dans Termux
-if [ -d "$INSTALL_DIR" ]; then
-  if [ -f "$INSTALL_DIR/hashish" ]; then
-    echo -e "${YELLOW}Un fichier 'hashish' existe déjà dans '$INSTALL_DIR'.${NC}"
-    REPLACE="o"
-    echo -e "${BLUE}Réponse automatique à la demande de remplacement : o${NC}"
-    if [[ "$REPLACE" == "o" || "$REPLACE" == "O" ]]; then
-      echo -e "${BLUE}Suppression de l'ancienne version de 'hashish' dans '$INSTALL_DIR'...${NC}"
-      rm -f "$INSTALL_DIR/hashish"
-      echo -e "${BLUE}Copie de './hashish.py' vers '$INSTALL_DIR/hashish'...${NC}"
-      cp "./hashish.py" "$INSTALL_DIR/hashish"
-      chmod +x "$INSTALL_DIR/hashish"
-      if [ $? -eq 0 ]; then
-        echo -e "${GREEN}'hashish' (la dernière version) est maintenant accessible globalement.${NC}"
-      else
-        echo -e "${RED}Erreur lors de la copie de 'hashish.py'. Assurez-vous d'avoir les permissions nécessaires.${NC}"
-      fi
-    else
-      echo -e "${YELLOW}Opération annulée. Vous pouvez exécuter 'hashish' depuis le répertoire du dépôt avec 'python3 hashish.py' ou tenter de le rendre global manuellement.${NC}"
-    fi
-  else
-    echo -e "${BLUE}Copie de './hashish.py' vers '$INSTALL_DIR/hashish'...${NC}"
-    cp "./hashish.py" "$INSTALL_DIR/hashish"
-    chmod +x "$INSTALL_DIR/hashish"
-    if [ $? -eq 0 ]; then
-      echo -e "${GREEN}'hashish' est maintenant accessible globalement.${NC}"
-    else
-      echo -e "${RED}Erreur lors de la copie de 'hashish.py'. Assurez-vous d'avoir les permissions nécessaires.${NC}"
-    fi
+# Exportation du contenu du dossier modules vers /usr/bin/
+echo -e "${BLUE}\nEXPORTATION du contenu de '$REPO_PATH/modules' vers '$INSTALL_DIR' (via liens symboliques)...${NC}"
+for item in "$REPO_PATH/modules"/*; do
+  base_name=$(basename "$item")
+  link_path="$INSTALL_DIR/$base_name"
+  if [ -e "$link_path" ]; then
+    echo -e "${YELLOW}Le fichier ou répertoire '$link_path' existe déjà. Suppression...${NC}"
+    rm -rf "$link_path"
   fi
-else
-  echo -e "${YELLOW}Impossible d'accéder à '$INSTALL_DIR' pour l'installation globale.${NC}"
-  echo -e "${GREEN}Vous pouvez exécuter 'hashish' depuis le répertoire du dépôt avec 'python3 hashish.py'.${NC}"
-fi
+  echo -e "${BLUE}Création du lien symbolique '$link_path' -> '$item'...${NC}"
+  ln -s "$item" "$link_path"
+  if [[ "$base_name" == "hashcracker.py" || "$base_name" == "webscanner.py" || "$base_name" == "recon.py" || "$base_name" == "osint.py" ]]; then
+    echo -e "${BLUE}Rend './$base_name' exécutable dans '$INSTALL_DIR'...${NC}"
+    chmod +x "$link_path"
+  fi
+done
 
 # Copie de banner.txt vers le répertoire bin
-if [ -f "./banner.txt" ]; then
+if [ -f "$REPO_PATH/banner.txt" ]; then
   echo -e "${BLUE}Copie de 'banner.txt' vers '$INSTALL_DIR'...${NC}"
-  cp "./banner.txt" "$INSTALL_DIR/banner.txt"
+  cp "$REPO_PATH/banner.txt" "$INSTALL_DIR/banner.txt"
 else
   echo -e "${YELLOW}Le fichier 'banner.txt' est introuvable dans le dépôt.${NC}"
 fi
 
-echo -e "${GREEN}\nInstallation terminée !${NC}"
-echo -e "${GREEN}Pour lancer le toolkit principal, tapez 'hashish'.${NC}"
-echo -e "${GREEN}Vous devriez également pouvoir utiliser les modules directement (par exemple, 'python3 hashcracker.py').${NC}"
+# Wrappers executables 
+echo -e "${BLUE}Création des wrappers d'exécution...${NC}" 
+
+cat > "$INSTALL_DIR/hashish" << 'EOF' 
+#!/data/data/com.termux/files/usr/bin/bash 
+SCRIPT_PATH="/data/data/com.termux/files/usr/bin/hashish.py" 
+[ ! -f "$SCRIPT_PATH" ] && echo "Erreur: hashish.py introuvable" && exit 1 
+exec python3 "$SCRIPT_PATH" "$@" 
+EOF 
+chmod +x "$INSTALL_DIR/hashish" 
+
+for module in "${MODULES[@]}"; do 
+    cmd_name="${module%.py}" 
+    cat > "$INSTALL_DIR/$cmd_name" << EOF 
+#!/data/data/com.termux/files/usr/bin/bash 
+exec python3 "/data/data/com.termux/files/usr/bin/$module" "\$@" 
+EOF 
+    chmod +x "$INSTALL_DIR/$cmd_name" 
+done
+echo -e "${GREEN}\nINSTALLATION TERMINÉE !${NC}"
+echo -e "${GREEN}Vous pouvez maintenant utiliser les outils directement depuis le terminal.${NC}"
+echo -e "${GREEN}Par exemple, tapez 'hashish' pour lancer le toolkit principal, ou 'hashcracker.py' pour utiliser le module de cracking de hash.${NC}"
 
 exit 0
