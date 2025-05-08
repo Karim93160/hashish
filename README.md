@@ -65,12 +65,6 @@ Suivez ces étapes pour installer Hashish sur votre système Termux ou Linux :
     ./installer.sh
     ```
 
-    Ce script va :
-    * Créer le dossier `modules`.
-    * Déplacer les modules nécessaires.
-    * Installer les dépendances Python requises (listées dans `requirements.txt`).
-    * Tenter de rendre `hashish` et les wrappers des modules accessibles globalement.
-
 5.  **(Facultatif) Installer les outils système nécessaires :**
     ```bash
     pkg install nmap whois traceroute dnsutils curl shodan -y
