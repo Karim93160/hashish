@@ -79,7 +79,7 @@ echo -e "${YELLOW}  Sans ces outils, certaines fonctionnalités de RECON ne fonc
 echo -e "${BLUE}\nCopie des modules vers '$INSTALL_DIR' pour une utilisation globale...${NC}"
 for module in "${MODULES[@]}"; do
   if [ -f "$REPO_PATH/modules/$module" ]; then
-    echo -e "${BLUE}Copie de '$module' vers '$INSTALL_DIR'...${NC}"
+    echo -e "${BLUE}Copie de '$module' vers '$INSTALL_DIR/$module'...${NC}"
     cp "$REPO_PATH/modules/$module" "$INSTALL_DIR/$module"
     chmod +x "$INSTALL_DIR/$module" # Rendre les modules exécutables (même si ce sont des librairies)
   else
@@ -91,7 +91,8 @@ done
 if [ -d "$INSTALL_DIR" ]; then
   if [ -f "$INSTALL_DIR/hashish" ]; then
     echo -e "${YELLOW}Un fichier 'hashish' existe déjà dans '$INSTALL_DIR'.${NC}"
-    read -p "Voulez-vous le remplacer ? (o/N) " REPLACE
+    REPLACE="o"
+    echo -e "${BLUE}Réponse automatique à la demande de remplacement : o${NC}"
     if [[ "$REPLACE" == "o" || "$REPLACE" == "O" ]]; then
       echo -e "${BLUE}Suppression de l'ancienne version de 'hashish' dans '$INSTALL_DIR'...${NC}"
       rm -f "$INSTALL_DIR/hashish"
@@ -134,4 +135,3 @@ echo -e "${GREEN}Pour lancer le toolkit principal, tapez 'hashish'.${NC}"
 echo -e "${GREEN}Vous devriez également pouvoir utiliser les modules directement (par exemple, 'python3 hashcracker.py').${NC}"
 
 exit 0
-
