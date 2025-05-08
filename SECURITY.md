@@ -10,7 +10,7 @@ Veuillez **NE PAS** ouvrir de problèmes publics sur GitHub pour les rapports de
 
 Pour signaler une vulnérabilité de sécurité, veuillez envoyer un e-mail à :
 
-[**Votre adresse e-mail de contact pour la sécurité ici**]
+[**karim9316077185@gmail.com**]
 
 Veuillez inclure les détails suivants dans votre rapport :
 
