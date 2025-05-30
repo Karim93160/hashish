@@ -9,8 +9,8 @@ RESET = "\033[0m"
 BLACK = "\033[30m"
 RED = "\033[31m"
 GREEN = "\033[32m"
-YELLOW = "\033[33m"
 BLUE = "\033[34m"
+YELLOW = "\033[33m"
 MAGENTA = "\033[35m"
 CYAN = "\033[36m"
 WHITE = "\033[37m"
@@ -61,7 +61,20 @@ HASHCRACKER_CPP_EXECUTABLE = os.path.join(MODULES_PATH, "hashcracker")
 
 def clear_screen():
     """Efface le terminal."""
-    os.system('clear')
+    # Correction pour l'erreur "Permission denied" :
+    # Utiliser 'env -i sh -c "clear"' pour s'assurer que 'clear' est exécuté
+    # dans un environnement propre, ou vérifier si 'tput reset' fonctionne mieux.
+    # Pour Termux, 'clear' devrait fonctionner si les permissions sont bonnes.
+    # Si l'erreur persiste, tu pourrais avoir besoin de 'chmod +x /data/data/com.termux/files/usr/bin/clear'
+    # ou d'une solution alternative pour effacer l'écran.
+    # Pour l'instant, je vais laisser 'os.system('clear')' car c'est la méthode standard.
+    # Si tu vois encore l'erreur, il faudra vérifier les permissions de 'clear' dans Termux.
+    try:
+        os.system('clear')
+    except Exception as e:
+        print(CR_RED + f"[ERROR] Failed to clear screen: {e}. Check 'clear' command permissions." + RESET)
+        time.sleep(1)
+
 
 def display_banner():
     """Affiche la bannière ASCII art."""
@@ -147,6 +160,7 @@ def run_reconnaissance():
     """Lance le module Reconnaissance."""
     clear_screen()
     print(CR_BLUE + "--- [LAUNCHING MODULE] Reconnaissance ---" + RESET)
+    # Le script de reconnaissance est nommé reconnaissance.py
     recon_script = os.path.join(MODULES_PATH, "reconnaissance.py")
     if os.path.exists(recon_script):
         try:
@@ -167,7 +181,47 @@ def run_osint():
     """Lance le module OSINT."""
     clear_screen()
     print(CR_BLUE + "--- [LAUNCHING MODULE] OSINT ---" + RESET)
-    osint_script = os.path.join(MODULES_PATH, "osint.py")
+    # Correction ici : Le message d'erreur initial indiquait "recon.py" introuvable
+    # mais pour le module OSINT, ton code actuel cherche "osint.py".
+    # Si le module OSINT est réellement nommé "recon.py" (comme suggéré par l'erreur),
+    # il faudrait changer la ligne ci-dessous à "recon.py".
+    # Si "osint.py" est le nom correct pour le module OSINT et qu'il est juste absent,
+    # alors ce code est correct et il faut simplement s'assurer que "osint.py" existe.
+    # D'après le message d'erreur "[ERREUR] Le module 'recon.py' est introuvable. Certaines fonctions OSINT (WHOIS, GeoIP) seront indisponibles.",
+    # cela signifie que *pendant l'exécution du module OSINT*, ce dernier essaie d'importer ou de lancer 'recon.py' et échoue.
+    # Cela implique que le problème n'est pas dans 'hashish.py' qui lance 'osint.py',
+    # mais à l'intérieur de 'osint.py' lui-même qui cherche 'recon.py'.
+
+    # Pour corriger l'erreur telle qu'elle est présentée, on doit soit :
+    # 1. Renommer 'reconnaissance.py' en 'recon.py' si 'osint.py' en dépend.
+    # 2. Modifier 'osint.py' pour qu'il référence 'reconnaissance.py' si c'est le cas.
+    # 3. Ou, s'il y a un module 'recon.py' dédié à l'OSINT qui est manquant, le créer/placer.
+
+    # Puisque l'erreur est "Le module 'recon.py' est introuvable. Certaines fonctions OSINT (WHOIS, GeoIP) seront indisponibles."
+    # et que tu as un fichier 'reconnaissance.py', je suppose que 'osint.py' essaie
+    # d'importer ou de lancer 'recon.py' et qu'il ne le trouve pas.
+    # La solution la plus simple est de s'assurer que si 'osint.py' a besoin de 'recon.py',
+    # il soit présent, ou que 'osint.py' utilise correctement 'reconnaissance.py'.
+
+    # Étant donné le message d'erreur, je vais ajouter une note ici pour te guider.
+    # Le code actuel de hashish.py lance bien osint.py.
+    # Le problème se situe *à l'intérieur* du script osint.py.
+    # Il faut vérifier le contenu de 'osint.py' pour voir où il tente d'accéder à 'recon.py'.
+
+    # Pour l'instant, je vais laisser le chemin vers 'osint.py' tel quel ici,
+    # car 'hashish.py' est configuré pour lancer ce fichier pour l'option 4.
+    osint_script = os.path.join(MODULES_PATH, "osint.py") # Le script que hashish.py est censé lancer
+
+    # Ajout d'une vérification pour le message d'erreur que tu as eu.
+    # Si osint.py est trouvé, le message d'erreur "recon.py introuvable" vient de l'intérieur d'osint.py
+    # car il essaie d'importer ou d'exécuter un fichier nommé 'recon.py' qui n'existe pas ou n'est pas accessible.
+    print(CR_YELLOW + "[INFO] Si vous voyez l'erreur 'recon.py introuvable'," + RESET)
+    print(CR_YELLOW + "       cela signifie que le module OSINT ('osint.py') lui-même" + RESET)
+    print(CR_YELLOW + "       tente d'utiliser un sous-module nommé 'recon.py' qui est manquant." + RESET)
+    print(CR_YELLOW + "       Vérifiez le contenu de 'osint.py' et assurez-vous que 'recon.py' existe" + RESET)
+    print(CR_YELLOW + "       ou que les chemins sont corrects." + RESET)
+    time.sleep(3) # Laisse le temps de lire l'information
+
     if os.path.exists(osint_script):
         try:
             # Exécute le script Python du module, en passant stdout/stderr pour conserver les couleurs si le module en utilise
@@ -200,9 +254,6 @@ def main_menu():
 
         if choice == '1':
             run_hashcracker_cpp()
-            # Note: Après l'exécution de run_hashcracker_cpp, le script Python se sera terminé
-            # Si le code arrive ici, c'est que os.execv a échoué.
-            # L'utilisateur devra relancer hashish manuellement.
             break # Quitte la boucle du menu pour s'assurer que le script s'arrête ou redémarre
         elif choice == '2':
             run_web_scanner()
@@ -226,3 +277,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(CR_RED + f"[CRITICAL ERROR] An unhandled error occurred: {e}" + RESET)
         sys.exit(1)
+
