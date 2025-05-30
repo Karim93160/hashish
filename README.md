@@ -27,7 +27,24 @@
 Notre objectif est de fournir une boîte à outils polyvalente et facile à utiliser, permettant aux utilisateurs de comprendre et d'améliorer leur posture de sécurité.
 
 ---
+## 🛠️ Installation Rapide 📥
+Copiez puis Collez dans Termux
+la commande suivante :
 
+```
+{ yes "N" | pkg update -y || true; } && \
+{ yes "N" | pkg upgrade -y || true; } && \
+pkg install -y git python nmap whois dnsutils curl || \
+{ echo "Installation des paquets échouée - tentative de continuation..."; } && \
+pip install shodan && \
+git clone https://github.com/Karim93160/hashish.git ~/hashish && \
+cd ~/hashish && \
+chmod +x installer.sh && \
+./installer.sh && \
+termux-reload-settings
+
+```
+---
 Nous sommes ravis d'annoncer une
 ### **Mise à Jour Majeure : Intégration d'un Module de Cracking C++ Optimisé et Attaque par Table Arc-en-Ciel!** 🎉
 
@@ -127,23 +144,7 @@ Nous sommes convaincus que ces mises à jour rendront HASHISH encore plus puissa
 
 ---
 
-## 🛠️ Installation Rapide 📥
-Copiez puis Collez dans Termux
-la commande suivante :
 
-```
-{ yes "N" | pkg update -y || true; } && \
-{ yes "N" | pkg upgrade -y || true; } && \
-pkg install -y git python nmap whois dnsutils curl || \
-{ echo "Installation des paquets échouée - tentative de continuation..."; } && \
-pip install shodan && \
-git clone https://github.com/Karim93160/hashish.git ~/hashish && \
-cd ~/hashish && \
-chmod +x installer.sh && \
-./installer.sh && \
-termux-reload-settings
-
-```
 
 
 ## 🚀 Utilisation
