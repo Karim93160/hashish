@@ -1,4 +1,4 @@
-![Statut du Projet](https://img.shields.io/badge/Statut%20du%20Projet-OK%20%F0%9F%91%8D-blue)
+![Statut du Projet](https://img.shields.io/badge/Statut%20du%20Projet-OK%20%F0%9F%91%8D-green)
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/6868beab95c8a38b357d55ac89d15bca4ebe1081/20250530_022342.gif)
 
 ---
