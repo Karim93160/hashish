@@ -126,6 +126,17 @@ else
     echo -e "${GREEN}Commande 'clear' est déjà disponible.${NC}"
 fi
 
+# Ajout de la permission d'exécution à 'clear'
+# Ceci est la nouvelle ligne que tu as demandée
+echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
+if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
+    chmod +x /data/data/com.termux/files/usr/bin/clear
+    echo -e "${GREEN}Permissions d'exécution accordées à '/data/data/com.termux/files/usr/bin/clear'.${NC}"
+else
+    echo -e "${YELLOW}Avertissement : La commande 'clear' n'a pas été trouvée à '/data/data/com.termux/files/usr/bin/clear'. Les permissions n'ont pas été modifiées.${NC}"
+fi
+echo "" # Nouvelle ligne pour une meilleure mise en forme
+
 
 # Vérification finale de g++ après tentatives d'installation
 if ! command -v g++ &> /dev/null; then
@@ -178,18 +189,22 @@ echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 # --- Copie des modules Python dans /usr/bin/modules/ ---
 echo -e "${BLUE}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MODULES_TARGET_DIR/'...${NC}"
 # Copie tous les fichiers .py et les sous-dossiers (qui sont des modules Python)
-# Cette approche est robuste et copie 'reconnaissance.py' si il est dans le dossier source.
+# Cette approche est robuste et copie tous les modules comme 'recon.py', 'web_scanner.py', 'osint.py' si ils sont dans le dossier source.
 # Exclure le dossier wordlists du rsync global pour le gérer spécifiquement.
 
 if command -v rsync &> /dev/null; then
     echo -e "${INFO}Utilisation de rsync pour copier les modules Python...${NC}"
-    # rsync pour une copie intelligente, en excluant le dossier wordlists
+    # rsync pour une copie intelligente, en excluant le dossier wordlists.
+    # --include='*.py' s'assure que les fichiers .py sont inclus.
+    # --include='*/' s'assure que les sous-dossiers sont inclus.
+    # --exclude='*' exclut tout le reste qui n'a pas été explicitement inclus.
     rsync -av --exclude 'wordlists/' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
     echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement (fallback)...${NC}"
     # Fallback pour copier les fichiers .py et les dossiers si rsync n'est pas disponible
-    # Copie les fichiers .py directement
+    # Copie les fichiers .py directement du niveau supérieur de 'modules/'
     find "$REPO_PATH/modules/" -maxdepth 1 -name "*.py" -exec cp {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true # Ignore les erreurs si aucun .py n'est trouvé
+
     # Copie les sous-dossiers (sauf 'wordlists')
     for dir in "$REPO_PATH/modules"/*/; do
         dir_name=$(basename "$dir")
@@ -219,17 +234,16 @@ CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
-        # Utiliser sed pour remplacer la mauvaise ligne par la bonne logique
-        # La regex doit être précise pour éviter de remplacer d'autres occurrences
-        # Nous allons cibler la ligne existante et la remplacer.
-        # L'ancienne ligne: `std::seed_seq seed_sequence(hash.begin(), hash.end());`
-        # La nouvelle logique implique de reconstruire `seed_sequence` avec `seed_data` et r_index.
-        # Cette modification est idempotente si le motif n'est pas trouvé la deuxième fois.
-
         # Vérifier si la correction est nécessaire avant de l'appliquer
+        # On cherche une ligne unique et on la remplace par un bloc de plusieurs lignes
+        # La nouvelle logique implique de reconstruire `seed_sequence` avec `seed_data` et r_index.
+        # Cette modification est conçue pour être idempotente.
+
+        # Détecter la ligne à remplacer : `std::seed_seq seed_sequence(hash.begin(), hash.end());`
+        # qui se trouve généralement dans un bloc de code spécifique.
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
             sed -i '/std::string reduced_string = "";/{
-                N;N;N;N;N;N;N;N;N; # Lire les 9 lignes suivantes pour englober la zone
+                N;N;N;N;N;N;N;N;N; # Lire suffisamment de lignes pour englober la zone
                 s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
 std::vector<unsigned int> seed_data;\
 for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\
