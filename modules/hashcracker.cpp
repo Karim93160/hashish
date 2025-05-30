@@ -271,6 +271,7 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
 
     if (tolower(choice) == 'y') {
         std::cout << CR_DARK_GRAY << "    Using default wordlists..." << RESET << std::endl;
+        // Correction ici : le dossier wordlists est maintenant à la racine du REPO_PATH
         std::string default_wordlist_dir = base_path + "wordlists" + std::filesystem::path::preferred_separator;
         for (int i = 1; i <= 10; ++i) {
             std::stringstream ss;
@@ -729,10 +730,6 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
 // --- Fonction principale ---
 int main() {
     // Initialiser OpenSSL
-    // Permet d'éviter des messages d'erreur OpenSSL qui polluent la console.
-    // Bien bien sûr, ERR_load_crypto_strings() est déprécié, cela reste utile.
-    // Plus moderne: OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
-    // Pour cet usage simple, on peut laisser ERR_load_crypto_strings();
     ERR_load_crypto_strings(); 
     OpenSSL_add_all_digests(); // Initialiser toutes les fonctions de hachage disponibles
 
@@ -741,12 +738,26 @@ int main() {
         // Efface l'écran pour un affichage propre au démarrage de chaque cycle
         std::cout << "\033[H\033[J";
 
+        // Définir la largeur du terminal pour le centrage
+        const int terminal_width = 80; // Largeur typique d'un terminal Termux
+
         // Bannière d'accueil personnalisée
-        std::cout << CR_RED BOLD << "       Hashcracker-V.CPP " << RESET << CR_CYAN << "by " << FAINT << ITALIC << "Karim" << RESET << std::endl;
-        std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
+        std::string title = "Hashcracker-V.CPP";
+        std::string subtitle = "by Karim";
+        
+        // Calcul pour centrer le titre principal
+        int title_padding = (terminal_width - title.length()) / 2;
+        std::cout << std::string(title_padding, ' ') << CR_RED BOLD << title << RESET << std::endl;
+
+        // Calcul pour centrer le sous-titre
+        int subtitle_padding = (terminal_width - (std::string("by ") + subtitle).length()) / 2;
+        std::cout << std::string(subtitle_padding, ' ') << CR_CYAN << "by " << FAINT ITALIC << subtitle << RESET << std::endl;
+        
+        // Lignes de séparation plus visuelles
+        std::cout << CR_BLUE << std::string(terminal_width, '=') << RESET << std::endl;
         std::cout << CR_MAGENTA << "\n    [INFO] Welcome to Hashcracker-V.CPP! " << RESET << std::endl;
         std::cout << CR_MAGENTA << "    [INFO] Your ultimate hash cracking and generation tool." << RESET << std::endl;
-        std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
+        std::cout << CR_BLUE << std::string(terminal_width, '=') << RESET << std::endl;
 
         std::string input_hash_hex;
         std::cout << CR_YELLOW << "\n [TARGET HASH] Enter hash to crack (or 'exit' to quit) > " << RESET;
