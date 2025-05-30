@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import time
@@ -160,8 +162,8 @@ def run_reconnaissance():
     """Lance le module Reconnaissance."""
     clear_screen()
     print(CR_BLUE + "--- [LAUNCHING MODULE] Reconnaissance ---" + RESET)
-    # Le script de reconnaissance est nommé reconnaissance.py
-    recon_script = os.path.join(MODULES_PATH, "reconnaissance.py")
+    # Mis à jour : Le script de reconnaissance est maintenant nommé recon.py
+    recon_script = os.path.join(MODULES_PATH, "recon.py")
     if os.path.exists(recon_script):
         try:
             # Exécute le script Python du module, en passant stdout/stderr pour conserver les couleurs si le module en utilise
@@ -173,7 +175,7 @@ def run_reconnaissance():
             print(CR_RED + f"[ERROR] An unexpected error occurred: {e}" + RESET)
     else:
         print(CR_RED + f"[ERROR] Reconnaissance module not found: {recon_script}" + RESET)
-        print(CR_YELLOW + "         Please ensure 'reconnaissance.py' is in your 'modules' directory." + RESET)
+        print(CR_YELLOW + "         Please ensure 'recon.py' is in your 'modules' directory." + RESET) # Mis à jour ici aussi
     print(CR_BLUE + "\n--- [MODULE END] Press Enter to return to main menu ---" + RESET)
     input()
 
@@ -181,46 +183,7 @@ def run_osint():
     """Lance le module OSINT."""
     clear_screen()
     print(CR_BLUE + "--- [LAUNCHING MODULE] OSINT ---" + RESET)
-    # Correction ici : Le message d'erreur initial indiquait "recon.py" introuvable
-    # mais pour le module OSINT, ton code actuel cherche "osint.py".
-    # Si le module OSINT est réellement nommé "recon.py" (comme suggéré par l'erreur),
-    # il faudrait changer la ligne ci-dessous à "recon.py".
-    # Si "osint.py" est le nom correct pour le module OSINT et qu'il est juste absent,
-    # alors ce code est correct et il faut simplement s'assurer que "osint.py" existe.
-    # D'après le message d'erreur "[ERREUR] Le module 'recon.py' est introuvable. Certaines fonctions OSINT (WHOIS, GeoIP) seront indisponibles.",
-    # cela signifie que *pendant l'exécution du module OSINT*, ce dernier essaie d'importer ou de lancer 'recon.py' et échoue.
-    # Cela implique que le problème n'est pas dans 'hashish.py' qui lance 'osint.py',
-    # mais à l'intérieur de 'osint.py' lui-même qui cherche 'recon.py'.
-
-    # Pour corriger l'erreur telle qu'elle est présentée, on doit soit :
-    # 1. Renommer 'reconnaissance.py' en 'recon.py' si 'osint.py' en dépend.
-    # 2. Modifier 'osint.py' pour qu'il référence 'reconnaissance.py' si c'est le cas.
-    # 3. Ou, s'il y a un module 'recon.py' dédié à l'OSINT qui est manquant, le créer/placer.
-
-    # Puisque l'erreur est "Le module 'recon.py' est introuvable. Certaines fonctions OSINT (WHOIS, GeoIP) seront indisponibles."
-    # et que tu as un fichier 'reconnaissance.py', je suppose que 'osint.py' essaie
-    # d'importer ou de lancer 'recon.py' et qu'il ne le trouve pas.
-    # La solution la plus simple est de s'assurer que si 'osint.py' a besoin de 'recon.py',
-    # il soit présent, ou que 'osint.py' utilise correctement 'reconnaissance.py'.
-
-    # Étant donné le message d'erreur, je vais ajouter une note ici pour te guider.
-    # Le code actuel de hashish.py lance bien osint.py.
-    # Le problème se situe *à l'intérieur* du script osint.py.
-    # Il faut vérifier le contenu de 'osint.py' pour voir où il tente d'accéder à 'recon.py'.
-
-    # Pour l'instant, je vais laisser le chemin vers 'osint.py' tel quel ici,
-    # car 'hashish.py' est configuré pour lancer ce fichier pour l'option 4.
-    osint_script = os.path.join(MODULES_PATH, "osint.py") # Le script que hashish.py est censé lancer
-
-    # Ajout d'une vérification pour le message d'erreur que tu as eu.
-    # Si osint.py est trouvé, le message d'erreur "recon.py introuvable" vient de l'intérieur d'osint.py
-    # car il essaie d'importer ou d'exécuter un fichier nommé 'recon.py' qui n'existe pas ou n'est pas accessible.
-    print(CR_YELLOW + "[INFO] Si vous voyez l'erreur 'recon.py introuvable'," + RESET)
-    print(CR_YELLOW + "       cela signifie que le module OSINT ('osint.py') lui-même" + RESET)
-    print(CR_YELLOW + "       tente d'utiliser un sous-module nommé 'recon.py' qui est manquant." + RESET)
-    print(CR_YELLOW + "       Vérifiez le contenu de 'osint.py' et assurez-vous que 'recon.py' existe" + RESET)
-    print(CR_YELLOW + "       ou que les chemins sont corrects." + RESET)
-    time.sleep(3) # Laisse le temps de lire l'information
+    osint_script = os.path.join(MODULES_PATH, "osint.py")
 
     if os.path.exists(osint_script):
         try:
