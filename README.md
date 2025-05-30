@@ -175,15 +175,15 @@ ________
 
 _________
 
-*📜 Licence*
+## Licence 📜
 
-**Ce projet est sous licence MIT.**
+Wazabi Shell est distribué sous la licence [MIT License](https://github.com/Karim93160/hashish/blob/677eecb0be4fc81a0becc2c2154c65ffe73ddbb1/LICENSE)
 
 _________
 
 ## Contact 📧
 
-Pour toute question ou suggestion, n'hésitez pas à ouvrir une [issue sur GitHub](https://github.com/Karim93160/wazabi/issues) ou à nous contacter par email :
+Pour toute question ou suggestion, n'hésitez pas à ouvrir une [issue sur GitHub](https://github.com/Karim93160/hashish/issues) ou à nous contacter par email :
 
 [![Contact par Email](https://img.shields.io/badge/Contact-par%20Email-blue.svg)](mailto:karim9316077185@gmail.com)
 
