@@ -743,7 +743,7 @@ int main() {
 
         // Bannière d'accueil personnalisée
         std::string title = "Hashcracker-V.CPP";
-        std::string subtitle = "by Karim";
+        std::string subtitle = "Karim"; // <--- MODIFIÉ ICI
         
         // Calcul pour centrer le titre principal
         int title_padding = (terminal_width - title.length()) / 2;
