@@ -168,6 +168,10 @@ fi
 if [ ! -f "$REPO_PATH/requirements.txt" ]; then
   echo -e "${YELLOW}Avertissement : 'requirements.txt' introuvable dans '$REPO_PATH'. Aucune dépendance Python ne sera installée via ce fichier.${NC}"
 fi
+# Nouvelle vérification pour le dossier wordlists au niveau racine du dépôt
+if [ ! -d "$REPO_PATH/wordlists" ]; then
+  echo -e "${YELLOW}Avertissement : Le dossier 'wordlists' est introuvable au niveau racine du dépôt '$REPO_PATH'. Les wordlists par défaut ne seront pas installées.${NC}"
+fi
 
 echo -e "${GREEN}Dépôt '$REPO_PATH' validé.${NC}\n"
 
@@ -217,12 +221,13 @@ fi
 echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.${NC}\n"
 
 # --- Copie des wordlists par défaut ---
-echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/modules/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
-if [ -d "$REPO_PATH/modules/wordlists" ]; then
-    cp -r "$REPO_PATH/modules/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
+# CORRECTION ICI : Changer le chemin source pour les wordlists.
+echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
+if [ -d "$REPO_PATH/wordlists" ]; then # Vérifie le nouveau chemin
+    cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
     echo -e "${GREEN}Wordlists par défaut copiées avec succès vers ${WORDLISTS_TARGET_DIR}.${NC}\n"
 else
-    echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/modules/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
+    echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n" # Message mis à jour
 fi
 
 
