@@ -45,7 +45,7 @@ termux-reload-settings
 ```
 ---
 **Nous sommes ravis d'annoncer une**
-### *Mise à Jour Majeure : Intégration d'un Module de Cracking C++ Optimisé et Attaque par Table Arc-en-Ciel!* 🎉
+### *mise à Jour Majeure : Intégration d'un Module de Cracking C++ Optimisé et Attaque par Table Arc-en-Ciel!* 🎉
 
 Nous sommes ravis d'annoncer une amélioration significative de HASHISH : l'intégration d'un **module de cracking de hachage entièrement réécrit en C++** (`hashcracker.cpp`) et l'introduction d'une **méthode d'attaque par table arc-en-ciel** avec son générateur dédié (`rainbow_generator.cpp`) ! Cette mise à jour apporte des performances accrues et de nouvelles capacités pour vos analyses.
 
