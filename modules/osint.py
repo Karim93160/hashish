@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import recon
 import socket
 import requests
 import shutil # Nécessaire pour shutil.which
