@@ -177,7 +177,7 @@ _________
 
 ## Licence 📜
 
-Wazabi Shell est distribué sous la licence [MIT License](https://github.com/Karim93160/hashish/blob/677eecb0be4fc81a0becc2c2154c65ffe73ddbb1/LICENSE)
+hashish est distribué sous la licence [MIT License](https://github.com/Karim93160/hashish/blob/677eecb0be4fc81a0becc2c2154c65ffe73ddbb1/LICENSE)
 
 _________
 
