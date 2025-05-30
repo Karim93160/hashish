@@ -181,6 +181,14 @@ _________
 
 _________
 
+## Contact 📧
+
+Pour toute question ou suggestion, n'hésitez pas à ouvrir une [issue sur GitHub](https://github.com/Karim93160/wazabi/issues) ou à nous contacter par email :
+
+[![Contact par Email](https://img.shields.io/badge/Contact-par%20Email-blue.svg)](mailto:karim9316077185@gmail.com)
+
+_________
+
 **⚠️ Avertissement**
 
 *Hashish Ethical Toolkit est destiné à un usage éthique et légal uniquement. Les développeurs ne sont pas responsables de toute utilisation abusive ou illégale de cet outil.*
