@@ -117,6 +117,8 @@ else
 fi
 
 # Installation de ncurses-utils pour la commande 'clear'
+# C'est ici que l'erreur de permission pour 'clear' est traitée.
+# Si 'clear' n'est pas disponible ou exécutable, nous tentons d'installer 'ncurses-utils'.
 if ! command -v clear &> /dev/null; then
     echo -e "${YELLOW}Commande 'clear' non trouvée ou non exécutable. Installation de 'ncurses-utils'...${NC}"
     install_package "ncurses-utils" || { echo -e "${YELLOW}Avertissement : Impossible d'installer 'ncurses-utils'. La commande 'clear' pourrait ne pas fonctionner correctement, mais l'outil utilisera un fallback.${NC}"; }
@@ -176,13 +178,26 @@ echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 # --- Copie des modules Python dans /usr/bin/modules/ ---
 echo -e "${BLUE}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MODULES_TARGET_DIR/'...${NC}"
 # Copie tous les fichiers .py et les sous-dossiers (qui sont des modules Python)
-# Exclure le dossier wordlists du rsync global pour le gérer spécifiquement
+# Cette approche est robuste et copie 'reconnaissance.py' si il est dans le dossier source.
+# Exclure le dossier wordlists du rsync global pour le gérer spécifiquement.
+
 if command -v rsync &> /dev/null; then
-    rsync -av --exclude 'wordlists/' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
+    echo -e "${INFO}Utilisation de rsync pour copier les modules Python...${NC}"
+    # rsync pour une copie intelligente, en excluant le dossier wordlists
+    rsync -av --exclude 'wordlists/' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
-    echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement...${NC}"
-    # Fallback pour copier les fichiers .py si rsync n'est pas disponible
-    cp -r "$REPO_PATH/modules/"*.py "$MODULES_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun module Python trouvé à copier ou erreur lors de la copie.${NC}"; }
+    echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement (fallback)...${NC}"
+    # Fallback pour copier les fichiers .py et les dossiers si rsync n'est pas disponible
+    # Copie les fichiers .py directement
+    find "$REPO_PATH/modules/" -maxdepth 1 -name "*.py" -exec cp {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true # Ignore les erreurs si aucun .py n'est trouvé
+    # Copie les sous-dossiers (sauf 'wordlists')
+    for dir in "$REPO_PATH/modules"/*/; do
+        dir_name=$(basename "$dir")
+        if [ "$dir_name" != "wordlists" ]; then
+            cp -r "$dir" "$MODULES_TARGET_DIR/" 2>/dev/null || true # Ignore erreurs pour les sous-dossiers vides
+        fi
+    done
+    echo -e "${YELLOW}Note : Pour une meilleure gestion des fichiers, il est recommandé d'installer 'rsync' (pkg install rsync).${NC}"
 fi
 echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.${NC}\n"
 
@@ -200,30 +215,32 @@ fi
 echo -e "${BLUE}Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++...${NC}"
 
 # Seul hashcracker.cpp contient maintenant la fonction reduce_hash et generate_rainbow_table
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") 
+CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
         # Utiliser sed pour remplacer la mauvaise ligne par la bonne logique
         # La regex doit être précise pour éviter de remplacer d'autres occurrences
         # Nous allons cibler la ligne existante et la remplacer.
-        # L'ancienne ligne: `seed_sequence.add(r_index);`
-        # La nouvelle logique implique de reconstruire `seed_sequence` avec `seed_data`.
+        # L'ancienne ligne: `std::seed_seq seed_sequence(hash.begin(), hash.end());`
+        # La nouvelle logique implique de reconstruire `seed_sequence` avec `seed_data` et r_index.
+        # Cette modification est idempotente si le motif n'est pas trouvé la deuxième fois.
 
-        # Assurez-vous que la modification n'est appliquée qu'une seule fois ou est idempotente.
-        # Ici, nous allons remplacer l'initialisation de `seed_sequence` dans `reduce_hash`.
-        # C'est une correction plus robuste que la précédente qui modifiait l'ajout de r_index.
-        sed -i '/std::string reduced_string = "";/{
-            N;N;N;N;N;N;N;N;N; # Lire les 9 lignes suivantes pour englober la zone
-            s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
+        # Vérifier si la correction est nécessaire avant de l'appliquer
+        if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
+            sed -i '/std::string reduced_string = "";/{
+                N;N;N;N;N;N;N;N;N; # Lire les 9 lignes suivantes pour englober la zone
+                s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
 std::vector<unsigned int> seed_data;\
 for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\
 seed_data.push_back(static_cast<unsigned int>(r_index));\
 \
 std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
-        }' "$file"
-        
-        echo -e "${GREEN}Correction appliquée à $file.${NC}"
+            }' "$file"
+            echo -e "${GREEN}Correction appliquée à $file.${NC}"
+        else
+            echo -e "${INFO}La correction de $file ne semble pas nécessaire (déjà appliquée ou motif non trouvé).${NC}"
+        fi
     else
         echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
     fi
@@ -240,7 +257,7 @@ echo -e "${BLUE}Vérification et compilation du module C++ 'hashcracker.cpp'...$
 
 if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
-  
+
   # Chemins par défaut pour les en-têtes et les bibliothèques OpenSSL sur Termux
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
@@ -248,15 +265,15 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE...${NC}"
   # Commande de compilation g++ avec les bonnes options pour C++17, OpenMP, Pthreads et OpenSSL.
   echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" -lssl -lcrypto${NC}"
-  
+
   if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
      -std=c++17 -fopenmp -pthread \
      -I"$OPENSSL_INCLUDE_PATH" \
      -L"$OPENSSL_LIB_PATH" \
      -lssl -lcrypto; then
-    
+
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
-    
+
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
         echo -e "${RED}Erreur: Le dossier cible des modules '$MODULES_TARGET_DIR' n'existe pas. Impossible de déplacer l'exécutable C++.${NC}"
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
