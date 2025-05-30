@@ -12,7 +12,7 @@
 </div>
 
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/8608618b28b490a3b51bd38a9791c8967ac10020/Screen_Recording_20250530_005911_Termux-ezgif.com-video-to-gif-converter.gif)
-[![Version](https://img.shields.io/badge/Version-4.0-blue.svg)](https://github.com/Karim93160/wazabi)
+[![Version](https://img.shields.io/badge/Version-5.0-red.svg)](https://github.com/Karim93160/wazabi)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-green.svg?style=flat-square)](https://github.com/YOUR_GITHUB_USERNAME/hashish/commits/main)
 [![Platform](https://img.shields.io/badge/Platform-Termux%20%7C%20Linux-lightgrey.svg?style=flat-square)](https://termux.com/)
