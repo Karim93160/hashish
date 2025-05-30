@@ -29,7 +29,7 @@ Notre objectif est de fournir une boîte à outils polyvalente et facile à util
 
 ---
 ## 🛠️ Installation Rapide 📥
-Copiez puis Collez dans Termux
+*Copiez* puis *Collez* dans Termux
 la commande suivante :
 ```{ yes "N" | pkg update -y || true; } && \
 { yes "N" | pkg upgrade -y || true; } && \
