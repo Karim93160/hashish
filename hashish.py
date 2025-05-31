@@ -208,7 +208,7 @@ def main_menu():
         print(CR_BLUE + "\n--- [AVAILABLE OPTIONS] -------------------------------" + RESET)
         print(CR_CYAN + " [1] " + CR_WHITE + "» Hash Cracker (C++)" + RESET)
         print(CR_CYAN + " [2] " + CR_WHITE + "» Web Scanner" + RESET)
-        print(CR_CYAN + " [3] " + CR_WHITE + "» Reconnaissance" + RESET)
+        print(CR_CYAN + " [3] " + CR_WHITE + "» Recon" + RESET)
         print(CR_CYAN + " [4] " + CR_WHITE + "» OSINT" + RESET)
         print(CR_CYAN + " [0] " + CR_WHITE + "» Exit" + RESET)
         print(CR_BLUE + "-------------------------------------------------------" + RESET)
