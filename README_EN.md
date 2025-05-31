@@ -47,6 +47,8 @@ chmod +x installer.sh && \
 ./installer.sh && \
 termux-reload-settings
 
+```
+
 We are excited to announce a
 Major Update: Integration of an Optimized C++ Cracking Module and Rainbow Table Attack! 🎉
 We are excited to announce a significant improvement to HASHISH: the integration of a hash cracking module completely rewritten in C++ (hashcracker.cpp) and the introduction of a rainbow table attack method with its dedicated generator (rainbow_generator.cpp)! This update brings increased performance and new capabilities for your analyses.
