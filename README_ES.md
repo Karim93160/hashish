@@ -1,3 +1,5 @@
+[🇫🇷 Français](https://github.com/karim93160/hashish/blob/main/README.md) | [🇬🇧 English](https://github.com/karim93160/hashish/blob/main/README_EN.md) | [🇪🇸 Español](https://github.com/karim93160/hashish/blob/main/README_ES.md)
+
 ![Estado del Proyecto](https://img.shields.io/badge/Estado%20del%20Proyecto-ESTABLE%20%F0%9F%91%8D-green)
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/7612fb26e60cc7816e80ae5bb792eeac1942dee8/20250530_022342.gif)
 
