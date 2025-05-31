@@ -46,6 +46,8 @@ chmod +x installer.sh && \
 ./installer.sh && \
 termux-reload-settings
 
+```
+
 
 Nos complace anunciar una
 Actualización Mayor: ¡Integración de un Módulo de Cracking C++ Optimizado y Ataque por Tabla Arcoíris! 🎉
