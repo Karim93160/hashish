@@ -16,6 +16,11 @@
 #include <random>    // Pour la fonction de réduction déterministe et la génération de chaînes
 #include <filesystem> // Pour std::filesystem::current_path et path manipulation (C++17)
 
+// --- Ajout spécifique pour obtenir le chemin de l'exécutable sous Linux ---
+#ifdef __linux__
+#include <unistd.h> // Pour readlink
+#endif
+
 // --- Ajout d'OpenMP ---
 #ifdef _OPENMP
 #include <omp.h>
@@ -216,15 +221,32 @@ double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int 
 
 // Fonction utilitaire pour obtenir le chemin du répertoire de l'exécutable
 std::string get_executable_dir() {
+    std::string exec_path;
+#ifdef __linux__
+    char result[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+    if (count != -1) {
+        exec_path = std::string(result, (size_t)count);
+        return std::filesystem::path(exec_path).parent_path().string();
+    } else {
+        std::cerr << CR_RED << "[WARNING] Could not read /proc/self/exe. Falling back to current_path(). Error: " << strerror(errno) << RESET << std::endl;
+        // Fallback si readlink échoue
+        try {
+            return std::filesystem::current_path().string();
+        } catch (const std::filesystem::filesystem_error& e) {
+            std::cerr << CR_RED << "[ERROR] Filesystem error: " << e.what() << RESET << std::endl;
+            return "";
+        }
+    }
+#else
+    // Pour les systèmes non-Linux, nous nous basons sur current_path()
     try {
-        // En C++17, std::filesystem::current_path() donne le répertoire de travail actuel.
-        // Pour nos besoins, cela devrait être suffisant si les fichiers sont dans le même dossier
-        // ou des sous-dossiers relatifs au lancement du programme.
         return std::filesystem::current_path().string();
     } catch (const std::filesystem::filesystem_error& e) {
         std::cerr << CR_RED << "[ERROR] Filesystem error: " << e.what() << RESET << std::endl;
         return "";
     }
+#endif
 }
 
 // Fonction de réduction : transforme un hash en un mot de passe
@@ -258,20 +280,19 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
     char choice;
     
     std::cout << CR_YELLOW << "\n Do you want to use the default wordlists (common.part.01 to common.part.10)?" << RESET << std::endl;
-    std::cout << CR_CYAN << " (They should be in the 'wordlists/' directory relative to the executable, e.g., modules/wordlists/)" << RESET << std::endl;
+    std::cout << CR_CYAN << " (They should be in the 'wordlists/' directory relative to the executable)" << RESET << std::endl;
     std::cout << CR_YELLOW << " Enter 'Y' for default, or 'N' to specify a custom wordlist path: > " << RESET;
     std::cin >> choice;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the rest of the line
 
     std::vector<std::string> wordlist_paths;
-    std::string base_path = get_executable_dir();
+    std::string base_path = get_executable_dir(); // Obtient le répertoire de l'exécutable
     if (!base_path.empty() && base_path.back() != std::filesystem::path::preferred_separator) {
         base_path += std::filesystem::path::preferred_separator;
     }
 
     if (tolower(choice) == 'y') {
         std::cout << CR_DARK_GRAY << "    Using default wordlists..." << RESET << std::endl;
-        // Correction ici : le dossier wordlists est maintenant à la racine du REPO_PATH
         std::string default_wordlist_dir = base_path + "wordlists" + std::filesystem::path::preferred_separator;
         for (int i = 1; i <= 10; ++i) {
             std::stringstream ss;
