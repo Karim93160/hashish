@@ -163,7 +163,7 @@ else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
 fi
 echo -e "${BLUE}Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++...${NC}"
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Garde cette ligne car on corrige hashcracker.cpp
+CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
@@ -189,7 +189,7 @@ echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
 # Définition des chemins des fichiers source C++
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
-HASH_RECON_CPP_SOURCE="$REPO_PATH/modules/hash_recon.cpp" # Nouveau chemin pour hash_recon.cpp
+HASH_RECON_CPP_SOURCE="$REPO_PATH/modules/hash_recon.cpp"
 
 HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
 
@@ -206,7 +206,7 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE et $HASH_RECON_CPP_SOURCE en 'hashcracker'...${NC}"
   echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" \"$HASH_RECON_CPP_SOURCE\" -o \"$HASHCRACKER_FINAL_EXECUTABLE\" -lcrypto -lssl -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" ${NC}"
 
-  # La commande de compilation a été mise à jour ici
+  # La commande de compilation a été mise à jour ici pour inclure les deux fichiers et les bibliothèques
   if g++ "$HASHCRACKER_CPP_SOURCE" "$HASH_RECON_CPP_SOURCE" -o "$HASHCRACKER_FINAL_EXECUTABLE" \
      -lcrypto -lssl -std=c++17 -fopenmp -pthread \
      -I"$OPENSSL_INCLUDE_PATH" \
@@ -218,8 +218,6 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
         exit 1
     fi
-    # Plus besoin de déplacer si on compile directement vers le chemin final
-    # echo -e "${INFO}Déplacement de l'exécutable compilé vers : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
     
     if [ -f "$HASHCRACKER_FINAL_EXECUTABLE" ]; then
         chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
