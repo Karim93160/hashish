@@ -2,6 +2,7 @@
 #include <string>   // Pour manipuler les chaînes de caractères
 #include <vector>   // Pour stocker des types de hachages
 #include <algorithm> // Pour std::tolower (pour convertir en minuscules)
+#include <cctype>   // Pour std::isxdigit
 
 // Fonction pour convertir une chaîne en minuscules
 std::string toLower(std::string s) {
@@ -45,7 +46,7 @@ void analyzeHash(const std::string& hash) {
         std::cout << "Suggestion décisive : Hachage de type **NTLM / LM** (ou format similaire avec sel) probable.\n";
         std::cout << "Paramètres de cassage recommandés : Outils spécifiques pour NTLM/LM, attaque par dictionnaire avec des listes de mots de passe Windows ou de type NTLM.\n";
     }
-    // Tu peux ajouter d'autres conditions pour d'autres types de hachages ici
+    // Vous pouvez ajouter d'autres conditions pour d'autres types de hachages ici
     // par exemple, pour bcrypt, scrypt, etc., qui ont des formats plus complexes et souvent un préfixe reconnaissable.
     else {
         std::cout << "Suggestion décisive : Type de hachage **indéterminé ou non pris en charge**.\n";
@@ -53,20 +54,3 @@ void analyzeHash(const std::string& hash) {
     }
     std::cout << "--------------------------------\n";
 }
-
-int main() {
-    std::string inputHash;
-
-    std::cout << "Bienvenue dans Hash Recon ! Entrez le hachage à analyser :\n";
-    std::cout << "Hachage : ";
-    std::cin >> inputHash;
-
-    // Convertir le hachage en minuscules pour faciliter la comparaison hexadécimale
-    // et éviter les problèmes de casse pour isHex.
-    inputHash = toLower(inputHash);
-
-    analyzeHash(inputHash);
-
-    return 0;
-}
-
