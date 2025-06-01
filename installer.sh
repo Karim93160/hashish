@@ -127,7 +127,6 @@ else
 fi
 
 # Ajout de la permission d'exécution à 'clear'
-# Ceci est la nouvelle ligne que tu as demandée
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear
@@ -172,6 +171,16 @@ fi
 if [ ! -d "$REPO_PATH/wordlists" ]; then
   echo -e "${YELLOW}Avertissement : Le dossier 'wordlists' est introuvable au niveau racine du dépôt '$REPO_PATH'. Les wordlists par défaut ne seront pas installées.${NC}"
 fi
+# Vérification pour les nouveaux fichiers C++
+if [ ! -f "$REPO_PATH/modules/hash_recon.h" ]; then
+  echo -e "${RED}Erreur : 'hash_recon.h' introuvable dans '$REPO_PATH/modules/'. Ce fichier est nécessaire pour la compilation des modules C++.${NC}"
+  exit 1
+fi
+if [ ! -f "$REPO_PATH/modules/hash_recon.cpp" ]; then
+  echo -e "${RED}Erreur : 'hash_recon.cpp' introuvable dans '$REPO_PATH/modules/'. Ce fichier est nécessaire pour la compilation des modules C++.${NC}"
+  exit 1
+fi
+
 
 echo -e "${GREEN}Dépôt '$REPO_PATH' validé.${NC}\n"
 
@@ -220,8 +229,18 @@ else
 fi
 echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.${NC}\n"
 
+# --- Copie des fichiers d'en-tête C++ (hash_recon.h) ---
+echo -e "${BLUE}Copie de 'hash_recon.h' vers '$MODULES_TARGET_DIR/'...${NC}"
+if [ -f "$REPO_PATH/modules/hash_recon.h" ]; then
+    cp "$REPO_PATH/modules/hash_recon.h" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur: Impossible de copier hash_recon.h. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
+    echo -e "${GREEN}Fichier d'en-tête C++ 'hash_recon.h' copié avec succès.${NC}\n"
+else
+    echo -e "${RED}Erreur: Fichier 'hash_recon.h' introuvable dans '$REPO_PATH/modules/'. Impossible de compiler les modules C++.${NC}"
+    exit 1
+fi
+
+
 # --- Copie des wordlists par défaut ---
-# CORRECTION ICI : Changer le chemin source pour les wordlists.
 echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
 if [ -d "$REPO_PATH/wordlists" ]; then # Vérifie le nouveau chemin
     cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
@@ -267,31 +286,34 @@ done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
 
-# --- Compilation et déplacement du module C++ hashcracker ---
+# --- Compilation et déplacement des modules C++ (hashcracker et hash_recon) ---
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
+HASH_RECON_CPP_SOURCE="$REPO_PATH/modules/hash_recon.cpp" # Nouveau fichier source à inclure
 HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp"
 HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
 
-echo -e "${BLUE}Vérification et compilation du module C++ 'hashcracker.cpp'...${NC}"
+echo -e "${BLUE}Vérification et compilation des modules C++ 'hashcracker.cpp' et 'hash_recon.cpp'...${NC}"
 
-if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
-  echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
+if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
+  echo -e "${INFO}Fichiers sources C++ trouvés : $HASHCRACKER_CPP_SOURCE et $HASH_RECON_CPP_SOURCE.${NC}"
 
   # Chemins par défaut pour les en-têtes et les bibliothèques OpenSSL sur Termux
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
-  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE...${NC}"
+  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE et $HASH_RECON_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE...${NC}"
   # Commande de compilation g++ avec les bonnes options pour C++17, OpenMP, Pthreads et OpenSSL.
-  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" -lssl -lcrypto${NC}"
+  # Note: J'ajoute le répertoire des modules au chemin d'inclusion pour trouver hash_recon.h
+  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" \"$HASH_RECON_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -I\"$MODULES_TARGET_DIR\" -L\"$OPENSSL_LIB_PATH\" -lssl -lcrypto${NC}"
 
-  if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
+  if g++ "$HASHCRACKER_CPP_SOURCE" "$HASH_RECON_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
      -std=c++17 -fopenmp -pthread \
      -I"$OPENSSL_INCLUDE_PATH" \
+     -I"$MODULES_TARGET_DIR" \
      -L"$OPENSSL_LIB_PATH" \
      -lssl -lcrypto; then
 
-    echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
+    echo -e "${GREEN}Modules C++ hashcracker et hash_recon compilés avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
         echo -e "${RED}Erreur: Le dossier cible des modules '$MODULES_TARGET_DIR' n'existe pas. Impossible de déplacer l'exécutable C++.${NC}"
@@ -318,16 +340,16 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
 
   else
     echo -e "${RED}------------------------------------------------------------------${NC}"
-    echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp.${NC}"
+    echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp et/ou hash_recon.cpp.${NC}"
     echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
     echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++.${NC}"
-    echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
+    echo -e "${YELLOW}Les modules C++ ne seront PAS disponibles ou ne fonctionneront pas correctement.${NC}"
     echo -e "${RED}------------------------------------------------------------------${NC}"
     exit 1
   fi
 else
-  echo -e "${YELLOW}Fichier source hashcracker.cpp non trouvé dans $HASHCRACKER_CPP_SOURCE. La compilation C++ est ignorée.${NC}"
-  echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible.${NC}"
+  echo -e "${YELLOW}Fichiers source C++ (hashcracker.cpp ou hash_recon.cpp) non trouvés dans le dossier des modules. La compilation C++ est ignorée.${NC}"
+  echo -e "${YELLOW}Les modules C++ ne seront PAS disponibles.${NC}"
 fi
 echo "" # Nouvelle ligne pour une meilleure mise en forme
 
