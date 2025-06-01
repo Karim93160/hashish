@@ -15,6 +15,7 @@
 #include <mutex>
 #include <random>
 #include <filesystem>
+#include <hash_recon.h>
 
 #ifdef __linux__
 #include <unistd.h>
