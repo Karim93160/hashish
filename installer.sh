@@ -43,14 +43,8 @@ install_package() {
 
 # --- 3. Démarrage du Script et Nettoyage Initial ---
 clear_screen
-echo -e "${BLUE}${BOLD}███╗  ███╗ █████╗ ███████╗██╗  ██╗██╗███████╗██╗  ██╗${NC}"
-echo -e "${BLUE}${BOLD}████╗████║██╔══██╗██╔════╝██║  ██║██║██╔════╝██║  ██║${NC}"
-echo -e "${BLUE}${BOLD}██╔████╔██║███████║███████╗███████║██║█████╗  ███████║${NC}"
-echo -e "${BLUE}${BOLD}██║╚██╔╝██║██╔══██║╚════██║██╔══██║██║██╔══╝  ██╔══██║${NC}"
-echo -e "${BLUE}${BOLD}██║ ╚═╝ ██║██║  ██║███████║██║  ██║██║███████╗██║  ██║${NC}"
-echo -e "${BLUE}${BOLD}╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═╝${NC}\n"
 echo -e "${CYAN}-----------------------------------------------------------${NC}"
-echo -e "${CYAN}  Bienvenue dans le script d'installation de Hashish !    ${NC}"
+echo -e "${CYAN}  Début de l'installation de Hashish                      ${NC}"
 echo -e "${CYAN}-----------------------------------------------------------${NC}\n"
 
 echo -e "${INFO}Début du processus d'installation. Cela peut prendre quelques minutes.${NC}"
@@ -102,10 +96,10 @@ REQUIRED_FILES=(
     "$REPO_PATH/banner-hashish.txt"
     "$REPO_PATH/modules/hashcracker.py"
     "$REPO_PATH/modules/hash_recon.py"
-    "$REPO_PATH/modules/rainbow_generator.py" # Assurez-vous que c'est bien le .py
+    "$REPO_PATH/modules/rainbow_generator.py"
     "$REPO_PATH/modules/hashcracker.cpp"
     "$REPO_PATH/modules/hash_recon.cpp"
-    "$REPO_PATH/modules/hash_recon.h" # Le fichier d'en-tête
+    "$REPO_PATH/modules/hash_recon.h"
     "$REPO_PATH/modules/dictionaries/rockyou.txt"
 )
 
@@ -127,10 +121,10 @@ echo -e "${GREEN}Tous les fichiers essentiels sont présents.${NC}\n"
 echo -e "${BLUE}--- Installation des prérequis système Termux ---${NC}"
 install_package "python" || exit 1
 install_package "python-pip" || exit 1
-install_package "clang" || exit 1 # Compilateur C/C++
-install_package "openssl-tool" || exit 1 # Pour les fonctions de hachage C++
-install_package "libcrypt" || exit 1 # Pour crypt() si utilisé (moins courant)
-install_package "git" || exit 1 # Pour cloner le dépôt si l'utilisateur ne l'a pas déjà
+install_package "clang" || exit 1
+install_package "openssl-tool" || exit 1
+install_package "libcrypt" || exit 1
+install_package "git" || exit 1
 echo -e "${GREEN}Tous les prérequis système sont installés.${NC}\n"
 
 # --- 8. Création des Dossiers Cibles dans Termux ---
@@ -156,7 +150,7 @@ echo -e "${GREEN}Modules Python copiés avec succès.${NC}\n"
 echo -e "${BLUE}--- Copie de 'hash_recon.h' vers '$MODULES_TARGET_DIR/' ---${NC}"
 if [ -f "$REPO_PATH/modules/hash_recon.h" ]; then
     cp "$REPO_PATH/modules/hash_recon.h" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur : Impossible de copier hash_recon.h. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
-    chmod +r "$MODULES_TARGET_DIR/hash_recon.h" # Donner des permissions de lecture seulement aux fichiers d'en-tête
+    chmod +r "$MODULES_TARGET_DIR/hash_recon.h"
     echo -e "${GREEN}Fichier d'en-tête C++ 'hash_recon.h' copié avec succès et permissions définies.${NC}\n"
 else
     echo -e "${RED}Erreur : Fichier 'hash_recon.h' introuvable dans '$REPO_PATH/modules/'. Impossible de compiler les modules C++.${NC}"
@@ -165,7 +159,6 @@ fi
 
 # --- 12. Copie des Wordlists par Défaut ---
 echo -e "${BLUE}--- Copie des wordlists par défaut ---${NC}"
-# Vérifiez si rockyou.txt est déjà décompressé, sinon décompressez-le.
 if [ -f "$REPO_PATH/modules/dictionaries/rockyou.txt" ]; then
     cp "$REPO_PATH/modules/dictionaries/rockyou.txt" "$WORDLISTS_TARGET_DIR/" || { echo -e "${RED}Erreur : Impossible de copier rockyou.txt.${NC}"; }
     echo -e "${GREEN}Wordlist 'rockyou.txt' copiée.${NC}\n"
@@ -179,12 +172,9 @@ else
 fi
 
 # --- 13. Pré-traitement : Correction des Fichiers C++ (si nécessaire) ---
-# Cette étape est souvent spécifique si des problèmes de compatibilité ou de syntaxe sont connus.
-# Pour l'instant, on se contente d'une validation simple.
 echo -e "${BLUE}--- Pré-traitement des fichiers C++ ---${NC}"
 if [ -f "$REPO_PATH/modules/hashcracker.cpp" ]; then
     echo -e "${INFO}Vérification de 'hashcracker.cpp'...${NC}"
-    # Exemple: Vérifier la présence de fonctions essentielles ou la syntaxe de base
     if grep -q "main(" "$REPO_PATH/modules/hashcracker.cpp"; then
         echo -e "${GREEN}Vérification de 'hashcracker.cpp' réussie.${NC}"
     else
@@ -206,18 +196,16 @@ HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
 if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
     echo -e "${INFO}  -> Fichiers sources C++ trouvés : '${HASHCRACKER_CPP_SOURCE}' et '${HASH_RECON_CPP_SOURCE}'.${NC}"
 
-    # Définition des chemins OpenSSL pour la compilation
     OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
     OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
     echo -e "${CYAN}  -> Lancement de la compilation avec g++...${NC}"
-    # Commande de compilation clé : inclut hashcracker.cpp ET hash_recon.cpp
     if g++ "$HASHCRACKER_CPP_SOURCE" "$HASH_RECON_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
        -std=c++17 -fopenmp -pthread \
        -I"$OPENSSL_INCLUDE_PATH" \
        -I"$MODULES_TARGET_DIR" \
        -L"$OPENSSL_LIB_PATH" \
-       -lssl -lcrypto; then # -lssl et -lcrypto sont pour OpenSSL
+       -lssl -lcrypto; then
 
         echo -e "${GREEN}  -> Modules C++ hashcracker et hash_recon compilés avec succès vers : ${HASHCRACKER_TEMP_EXECUTABLE}${NC}"
 
@@ -230,7 +218,7 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
         echo -e "${INFO}  -> Déplacement de l'exécutable compilé vers : ${HASHCRACKER_FINAL_EXECUTABLE}${NC}"
         if mv "$HASHCRACKER_TEMP_EXECUTABLE" "$HASHCRACKER_FINAL_EXECUTABLE"; then
             echo -e "${GREEN}  -> Exécutable C++ déplacé avec succès.${NC}"
-            chmod +x "$HASHCRACKER_FINAL_EXECUTABLE" # Rendre l'exécutable
+            chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
             echo -e "${GREEN}  -> Permissions d'exécution accordées à ${HASHCRACKER_FINAL_EXECUTABLE}.${NC}"
         else
             echo -e "${RED}Erreur : Impossible de déplacer l'exécutable C++ vers ${HASHCRACKER_FINAL_EXECUTABLE}. Vérifiez les permissions du dossier cible ou l'espace disque.${NC}"
@@ -253,8 +241,6 @@ fi
 echo -e "${GREEN}Compilation des modules C++ terminée.${NC}\n"
 
 # --- 15. Nettoyage de l'ancien 'rainbow_generator' (s'il existe) ---
-# Si tu avais un ancien binaire rainbow_generator, le retirer.
-# Actuellement, la génération est intégrée en Python, mais bon à garder au cas où.
 echo -e "${BLUE}--- Nettoyage des anciens exécutables (si présents) ---${NC}"
 if [ -f "$MODULES_TARGET_DIR/rainbow_generator_old" ]; then
     rm "$MODULES_TARGET_DIR/rainbow_generator_old"
@@ -263,7 +249,6 @@ fi
 echo -e "${GREEN}Nettoyage des anciens exécutables terminé.${NC}\n"
 
 # --- 16. Vérification et Création du Fichier 'rainbow.txt' ---
-# Assurez-vous que le fichier de base pour les tables arc-en-ciel existe.
 echo -e "${BLUE}--- Vérification du fichier de table arc-en-ciel par défaut ---${NC}"
 RAINBOW_TABLE_DEFAULT="$MODULES_TARGET_DIR/rainbow.txt"
 if [ ! -f "$RAINBOW_TABLE_DEFAULT" ]; then
@@ -276,16 +261,14 @@ fi
 
 # --- 17. Attribution des Permissions aux Fichiers et Dossiers ---
 echo -e "${BLUE}--- Attribution des permissions ---${NC}"
-chmod +x "$INSTALL_DIR/hashish.py" # Le script principal
+chmod +x "$INSTALL_DIR/hashish.py"
 chmod +x "$MODULES_TARGET_DIR/hashcracker.py"
 chmod +x "$MODULES_TARGET_DIR/hash_recon.py"
-chmod +x "$MODULES_TARGET_DIR/rainbow_generator.py" # Le script Python de génération
-# Note: hashcracker (le binaire C++) a déjà reçu les permissions +x à l'étape 14.
+chmod +x "$MODULES_TARGET_DIR/rainbow_generator.py"
 echo -e "${GREEN}Permissions attribuées aux scripts Python et aux dossiers.${NC}\n"
 
 # --- 18. Création du Raccourci Global 'hashish' ---
 echo -e "${BLUE}--- Création du raccourci global 'hashish' ---${NC}"
-# Crée un script wrapper pour exécuter hashish.py avec python
 WRAPPER_SCRIPT_PATH="$INSTALL_DIR/hashish"
 echo "#!/data/data/com.termux/files/usr/bin/bash" > "$WRAPPER_SCRIPT_PATH"
 echo "python '$INSTALL_DIR/hashish.py' \"\$@\"" >> "$WRAPPER_SCRIPT_PATH"
@@ -294,8 +277,7 @@ echo -e "${GREEN}Raccourci 'hashish' créé avec succès. Vous pouvez maintenant
 
 # --- 19. Installation des Dépendances Python ---
 echo -e "${BLUE}--- Installation des dépendances Python via pip ---${NC}"
-# Liste des dépendances Python (ajoutez-en d'autres si nécessaire)
-PYTHON_DEPS=("pycryptodome" "colorama") # colorama pour la coloration cross-plateforme
+PYTHON_DEPS=("pycryptodome" "colorama")
 for dep in "${PYTHON_DEPS[@]}"; do
     echo -e "${INFO}  -> Installation de la dépendance Python : ${dep}...${NC}"
     if pip install "$dep"; then
