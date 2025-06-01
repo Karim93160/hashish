@@ -195,8 +195,7 @@ echo -e "${GREEN}Dossiers cibles créés.${NC}\n"
 echo -e "${BLUE}Copie de 'hashish.py' et 'banner-hashish.txt' vers ${INSTALL_DIR}...${NC}"
 cp "$REPO_PATH/hashish.py" "$INSTALL_DIR/hashish.py" || { echo -e "${RED}Erreur: Impossible de copier hashish.py. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
 cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/banner-hashish.txt" || { echo -e "${RED}Erreur: Impossible de copier banner-hashish.txt. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
-chmod +x "$INSTALL_DIR/hashish.py"
-chmod +r "$INSTALL_DIR/banner-hashish.txt" # Lecture seule pour banner est suffisant
+
 echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 
 # --- Copie des modules Python dans /usr/bin/modules/ ---
@@ -233,7 +232,9 @@ echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.
 echo -e "${BLUE}Copie de 'hash_recon.h' vers '$MODULES_TARGET_DIR/'...${NC}"
 if [ -f "$REPO_PATH/modules/hash_recon.h" ]; then
     cp "$REPO_PATH/modules/hash_recon.h" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur: Impossible de copier hash_recon.h. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
-    echo -e "${GREEN}Fichier d'en-tête C++ 'hash_recon.h' copié avec succès.${NC}\n"
+    # Nouvelle ligne pour les permissions de lecture seulement
+    chmod +r "$MODULES_TARGET_DIR/hash_recon.h"
+    echo -e "${GREEN}Fichier d'en-tête C++ 'hash_recon.h' copié avec succès et permissions définies.${NC}\n"
 else
     echo -e "${RED}Erreur: Fichier 'hash_recon.h' introuvable dans '$REPO_PATH/modules/'. Impossible de compiler les modules C++.${NC}"
     exit 1
@@ -244,7 +245,9 @@ fi
 echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
 if [ -d "$REPO_PATH/wordlists" ]; then # Vérifie le nouveau chemin
     cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
-    echo -e "${GREEN}Wordlists par défaut copiées avec succès vers ${WORDLISTS_TARGET_DIR}.${NC}\n"
+    # Nouvelle ligne pour les permissions des wordlists (lecture seule)
+    chmod -R +r "$WORDLISTS_TARGET_DIR" # Lire tous les fichiers et dossiers à l'intérieur
+    echo -e "${GREEN}Wordlists par défaut copiées avec succès vers ${WORDLISTS_TARGET_DIR} et permissions définies.${NC}\n"
 else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n" # Message mis à jour
 fi
@@ -324,14 +327,9 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
     echo -e "${INFO}Déplacement de l'exécutable compilé vers : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
     if mv "$HASHCRACKER_TEMP_EXECUTABLE" "$HASHCRACKER_FINAL_EXECUTABLE"; then
         echo -e "${GREEN}Exécutable C++ déplacé avec succès.${NC}"
-        if [ -f "$HASHCRACKER_FINAL_EXECUTABLE" ]; then
-            chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
-            echo -e "${GREEN}Permissions d'exécution accordées à $HASHCRACKER_FINAL_EXECUTABLE.${NC}"
-        else
-            echo -e "${RED}Erreur: L'exécutable C++ n'a pas été trouvé après le déplacement. Problème de chemin ou de fichier manquant.${NC}"
-            echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
-            exit 1
-        fi
+        # Permissions d'exécution pour l'exécutable C++
+        chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
+        echo -e "${GREEN}Permissions d'exécution accordées à $HASHCRACKER_FINAL_EXECUTABLE.${NC}"
     else
         echo -e "${RED}Erreur: Impossible de déplacer l'exécutable C++ vers $HASHCRACKER_FINAL_EXECUTABLE. Vérifiez les permissions du dossier cible ou l'espace disque.${NC}"
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
@@ -374,12 +372,31 @@ if [ ! -f "$RAINBOW_TXT_PATH" ]; then
 else
     echo -e "${GREEN}Fichier rainbow.txt déjà existant à $RAINBOW_TXT_PATH.${NC}\n"
 fi
+# Assurez-vous que rainbow.txt a les permissions de lecture/écriture
+chmod 664 "$RAINBOW_TXT_PATH" # rw-rw-r-- (utilisateur/groupe peuvent lire/écrire, autres peuvent lire)
+echo -e "${GREEN}Permissions de rainbow.txt définies.${NC}\n"
 
 
-# --- Permissions pour les scripts Python des modules ---
-echo -e "${BLUE}Attribution des permissions d'exécution aux modules Python dans ${MODULES_TARGET_DIR}...${NC}"
+# --- Permissions pour les scripts Python des modules et le script principal ---
+echo -e "${BLUE}Attribution des permissions aux fichiers Python et autres composants...${NC}"
+
+# Permissions pour le script principal hashish.py
+chmod +x "$INSTALL_DIR/hashish.py"
+echo -e "${GREEN}Permissions d'exécution accordées à $INSTALL_DIR/hashish.py.${NC}"
+
+# Permissions pour la bannière (lecture seule)
+chmod +r "$INSTALL_DIR/banner-hashish.txt"
+echo -e "${GREEN}Permissions de lecture accordées à $INSTALL_DIR/banner-hashish.txt.${NC}"
+
+# Permissions d'exécution pour tous les fichiers .py dans le dossier des modules
 find "$MODULES_TARGET_DIR" -type f -name "*.py" -exec chmod +x {} \;
-echo -e "${GREEN}Permissions d'exécution accordées aux modules Python.${NC}\n"
+echo -e "${GREEN}Permissions d'exécution accordées aux modules Python dans ${MODULES_TARGET_DIR}.${NC}"
+
+# S'assurer que les dossiers ont les bonnes permissions (lecture, écriture, exécution pour la navigation)
+chmod 755 "$INSTALL_DIR"
+chmod 755 "$MODULES_TARGET_DIR"
+chmod 755 "$WORDLISTS_TARGET_DIR"
+echo -e "${GREEN}Permissions des dossiers définies.${NC}\n"
 
 
 # --- Création d'un script exécutable global ---
