@@ -3,36 +3,34 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
-#include <algorithm> // Pour std::transform
-#include <chrono>    // Pour la mesure du temps
-#include <iomanip>   // Pour std::setw, std::setfill
-#include <openssl/evp.h> // Fonctions de hachage OpenSSL
-#include <openssl/err.h> // Pour ERR_print_errors_fp
-#include <random>    // Pour std::mt19937 et std::uniform_int_distribution
-#include <limits>    // Pour std::numeric_limits
-#include <map>       // Pour std::map
-#include <thread>    // Pour std::this_thread::sleep_for
+#include <algorithm>
+#include <chrono>
+#include <iomanip>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#include <random>
+#include <limits>
+#include <map>
+#include <thread>
 
-// --- Codes de couleurs ANSI pour le terminal ---
 #define RESET   "\033[0m"
-#define BLACK   "\033[30m"      /* Black */
-#define RED     "\033[31m"      /* Red */
-#define GREEN   "\033[32m"      /* Green */
-#define YELLOW  "\033[33m"      /* Yellow */
-#define BLUE    "\033[34m"      /* Blue */
-#define MAGENTA "\033[35m"      /* Magenta */
-#define CYAN    "\033[36m"      /* Cyan */
-#define WHITE   "\033[37m"      /* White */
-#define BOLD    "\033[1m"       /* Bold */
-#define FAINT   "\033[2m"       /* Faint/Dim */
-#define ITALIC  "\033[3m"       /* Italic */
-#define UNDERLINE "\033[4m"     /* Underline */
-#define BLINK   "\033[5m"       /* Blink */
-#define REVERSE "\033[7m"       /* Reverse */
-#define HIDDEN  "\033[8m"       /* Hidden */
-#define STRIKETHROUGH "\033[9m" /* Strikethrough */
+#define BLACK   "\033[30m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define WHITE   "\033[37m"
+#define BOLD    "\033[1m"
+#define FAINT   "\033[2m"
+#define ITALIC  "\033[3m"
+#define UNDERLINE "\033[4m"
+#define BLINK   "\033[5m"
+#define REVERSE "\033[7m"
+#define HIDDEN  "\033[8m"
+#define STRIKETHROUGH "\033[9m"
 
-// Couleurs personnalisées pour l'ambiance Cracker Mood
 #define CR_RED    RED BOLD
 #define CR_GREEN  GREEN BOLD
 #define CR_YELLOW YELLOW BOLD
@@ -40,11 +38,8 @@
 #define CR_CYAN   CYAN BOLD
 #define CR_MAGENTA MAGENTA BOLD FAINT
 #define CR_WHITE  WHITE BOLD
-#define CR_DARK_GRAY "\033[90m" // Gris foncé pour les infos moins importantes
+#define CR_DARK_GRAY "\033[90m"
 
-// --- Fonctions utilitaires (reprises de hashcracker.cpp) ---
-
-// Convertit un tableau d'octets (digest binaire) en une chaîne hexadécimale
 std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
@@ -54,11 +49,9 @@ std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     return ss.str();
 }
 
-// Calcule le hachage d'une chaîne d'entrée en utilisant un type de digest OpenSSL spécifié
 std::string calculate_hash_openssl(const std::string& input, const EVP_MD* digest_type) {
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     if (mdctx == nullptr) {
-        // Gérer l'erreur de création du contexte
         return "";
     }
 
@@ -83,7 +76,6 @@ std::string calculate_hash_openssl(const std::string& input, const EVP_MD* diges
     return bytes_to_hex_string(digest, digest_len);
 }
 
-// Obtient le pointeur vers la fonction de digest OpenSSL correspondant au type de hash
 const EVP_MD* get_openssl_digest_type(const std::string& hash_type_str) {
     if (hash_type_str == "MD5") return EVP_md5();
     if (hash_type_str == "SHA1") return EVP_sha1();
@@ -93,23 +85,11 @@ const EVP_MD* get_openssl_digest_type(const std::string& hash_type_str) {
     return nullptr;
 }
 
-// Fonction de réduction : transforme un hash en un mot de passe
-// La complexité de cette fonction de réduction est cruciale pour l'efficacité de la table arc-en-ciel.
-// Pour une "vraie" table arc-en-ciel, la fonction de réduction devrait varier avec l'index de la fonction
-// dans la chaîne, pour éviter les "collisions" (chaînes qui se rejoignent).
-// Ici, nous utilisons une simplification basée sur le charset et la longueur cible.
-// `r_index` est important : il simule une variation de la fonction de réduction.
 std::string reduce_hash(const std::string& hash, size_t target_len, const std::string& charset, int r_index) {
     if (charset.empty() || target_len == 0) return "";
 
     std::string reduced_string = "";
-    // Pour cet exemple, nous allons utiliser une méthode simple basée sur le hash
-    // et l'index de la fonction de réduction (r_index) pour déterminer les caractères.
-    // Une implémentation réelle serait plus robuste et utiliserait par exemple
-    // des bits spécifiques du hash après XOR avec l'index de réduction.
 
-    // Utilisons un générateur de nombres pseudo-aléatoires déterministe basé sur le hash et r_index
-    // pour "simuler" la réduction. Cela garantit que la même entrée produit la même sortie.
     std::vector<unsigned int> seed_data;
     for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }
     seed_data.push_back(static_cast<unsigned int>(r_index));
@@ -124,7 +104,6 @@ std::string reduce_hash(const std::string& hash, size_t target_len, const std::s
     return reduced_string;
 }
 
-// Génère la table arc-en-ciel
 void generate_rainbow_table(
     const std::string& output_file,
     const EVP_MD* digest_type,
@@ -166,7 +145,6 @@ void generate_rainbow_table(
         return;
     }
 
-    // Utilisation d'un générateur de nombres aléatoires pour choisir les mots de départ des chaînes
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_int_distribution<> charset_dist(0, charset.length() - 1);
@@ -176,7 +154,6 @@ void generate_rainbow_table(
     long long generated_chains = 0;
 
     for (long long i = 0; i < num_chains; ++i) {
-        // Générer un mot de passe de départ aléatoire pour la chaîne
         int current_len = len_dist(generator);
         std::string start_word = "";
         for (int k = 0; k < current_len; ++k) {
@@ -186,16 +163,14 @@ void generate_rainbow_table(
         std::string current_word = start_word;
         std::string current_hash;
 
-        // Parcourir la chaîne
         for (int j = 0; j < chain_length; ++j) {
             current_hash = calculate_hash_openssl(current_word, digest_type);
-            if (j == chain_length - 1) { // Dernier élément de la chaîne, on le stocke
+            if (j == chain_length - 1) {
                 break;
             }
-            current_word = reduce_hash(current_hash, current_len, charset, j); // Réduire le hash pour le prochain mot
+            current_word = reduce_hash(current_hash, current_len, charset, j);
         }
         
-        // Stocker le mot de départ et le hash de fin de chaîne
         outfile << start_word << ":" << current_hash << "\n";
         generated_chains++;
 
@@ -205,7 +180,7 @@ void generate_rainbow_table(
     }
 
     outfile.close();
-    std::cout << "\r" << std::string(80, ' ') << "\r"; // Efface la ligne de progression
+    std::cout << "\r" << std::string(80, ' ') << "\r";
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
@@ -216,7 +191,6 @@ void generate_rainbow_table(
 
 
 int main() {
-    // Efface l'écran pour un affichage propre au démarrage
     std::cout << "\033[H\033[J";
 
     std::cout << CR_RED BOLD << "   H A S H C R A C K E R - R A I N B O W G E N " << RESET << std::endl;
@@ -230,15 +204,10 @@ int main() {
     std::cout << CR_YELLOW << "\n [OUTPUT FILE] Enter desired output filename (e.g., my_rainbow_table.txt) > " << RESET;
     std::cin >> output_filename;
 
-    // Définir le chemin de sortie dans le sous-dossier `modules` de `hashish`
-    // Assurez-vous que le chemin est correct pour Termux, en partant de `pwd`
-    std::string rainbow_table_path = "./rainbow.txt"; // Par défaut, dans le répertoire courant (modules/)
-                                                       // Le script installer.sh le déplacera si nécessaire.
-
+    std::string rainbow_table_path = "./rainbow.txt";
 
     std::cout << CR_BLUE << "\n--- [PARAMETERS] --------------------------------------" << RESET << std::endl;
     
-    // Définition des jeux de caractères prédéfinis
     std::map<int, std::pair<std::string, std::string>> predefined_charsets;
     predefined_charsets[1] = {"Lowercase letters (a-z)", "abcdefghijklmnopqrstuvwxyz"};
     predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
@@ -256,7 +225,7 @@ int main() {
     
     std::string charset_choice_str;
     std::cin >> charset_choice_str;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the rest of the line
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     std::string charset_input;
     std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper);
@@ -316,14 +285,13 @@ int main() {
     std::cout << CR_MAGENTA << "\n[INFO] Generating a table of " << num_chains << " chains, each " << chain_length << " steps long." << RESET << std::endl;
     std::cout << CR_MAGENTA << "       This will result in a file size of approximately " 
               << std::fixed << std::setprecision(2) 
-              << (num_chains * (min_len + (EVP_MD_size(digest_algo) * 2) + 2)) / (1024.0 * 1024.0) // word + hash + colon + newline
+              << (num_chains * (min_len + (EVP_MD_size(digest_algo) * 2) + 2)) / (1024.0 * 1024.0)
               << " MB (estimation, can vary based on actual password lengths)." << RESET << std::endl;
-
 
     char confirm_choice;
     std::cout << CR_YELLOW << "Do you want to proceed with rainbow table generation? (y/n) > " << RESET;
     std::cin >> confirm_choice;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the rest of the line
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     if (tolower(confirm_choice) != 'y') {
         std::cout << CR_YELLOW << "[INFO] Rainbow table generation cancelled by user." << RESET << std::endl;
