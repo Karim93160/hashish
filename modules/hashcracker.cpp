@@ -15,7 +15,6 @@
 #include <mutex>
 #include <random>
 #include <filesystem>
-#include "hash_recon.h"
 
 #ifdef __linux__
 #include <unistd.h>
@@ -732,14 +731,21 @@ int main() {
         }
         
         // --- NOUVELLE INTEGRATION DU MODULE HASH_RECON ---
-        // Appeler la fonction analyzeHash du module hash_recon
-        // Stocker le résultat dans une variable de type HashReconResult
-        HashReconResult analysis_results = analyzeHash(input_hash_hex); 
+        // Appeler la fonction recognizeHash du module HashRecon
+        // Elle retourne une std::string
+        std::string analysis_results_str = HashRecon::recognizeHash(input_hash_hex); 
 
         // Afficher les résultats de l'analyse de manière structurée et claire
         std::cout << "\n--- " << CR_CYAN << BOLD << "ANALYSE DU HACHAGE" << RESET << " -----------------------------------" << std::endl;
-        std::cout << CR_WHITE << "Type de hachage probable : " << BOLD << analysis_results.probableHashType << RESET << std::endl;
+        std::cout << CR_WHITE << "Type de hachage probable : " << BOLD << analysis_results_str << RESET << std::endl;
 
+        // Les sections suivantes nécessitent que HashRecon::recognizeHash retourne une structure
+        // comme HashReconResult. Actuellement, elle retourne une std::string.
+        // Si tu souhaites afficher ces informations, tu devras modifier hash_recon.h et hash_recon.cpp
+        // pour que recognizeHash retourne une HashReconResult complète.
+        // En attendant, je les commente pour éviter les erreurs de compilation.
+
+        /*
         if (!analysis_results.generalNotes.empty()) {
             std::cout << "\n" << CR_YELLOW << BOLD << "Notes générales : " << RESET << std::endl;
             for (const std::string& note : analysis_results.generalNotes) {
@@ -756,6 +762,7 @@ int main() {
         for (const std::string& suggestion : analysis_results.lengthSuggestions) {
             std::cout << CR_WHITE << suggestion << RESET << std::endl;
         }
+        */
         std::cout << CR_BLUE << "--------------------------------------------------------" << RESET << std::endl;
         // --- FIN DE L'INTEGRATION DU MODULE HASH_RECON ---
 
