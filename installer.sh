@@ -202,13 +202,17 @@ echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 echo -e "${BLUE}--- Copie des modules Python ---${NC}" # Ajout de titre de section
 echo -e "${INFO}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MODULES_TARGET_DIR/'...${NC}"
 
+# Utilise rsync si disponible pour une copie plus efficace, sinon fallback
 if command -v rsync &> /dev/null; then
     echo -e "${INFO}Utilisation de rsync pour copier les modules Python...${NC}"
-    rsync -av --exclude 'wordlists/' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
+    # Exclut les wordlists et les fichiers C++ lors de la copie des modules Python
+    rsync -av --exclude 'wordlists/' --exclude '*.cpp' --exclude '*.h' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
     echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement (fallback)...${NC}"
+    # Copie les fichiers .py directement
     find "$REPO_PATH/modules/" -maxdepth 1 -name "*.py" -exec cp {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true
 
+    # Copie les sous-répertoires (sauf wordlists)
     for dir in "$REPO_PATH/modules"/*/; do
         dir_name=$(basename "$dir")
         if [ "$dir_name" != "wordlists" ]; then
@@ -235,7 +239,12 @@ fi
 echo -e "${BLUE}--- Copie des wordlists par défaut ---${NC}" # Ajout de titre de section
 echo -e "${INFO}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
 if [ -d "$REPO_PATH/wordlists" ]; then
-    cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
+    # Utilise rsync si disponible pour copier les wordlists, sinon cp
+    if command -v rsync &> /dev/null; then
+        rsync -av "$REPO_PATH/wordlists/" "$WORDLISTS_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des wordlists avec rsync.${NC}"; }
+    else
+        cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
+    fi
     chmod -R +r "$WORDLISTS_TARGET_DIR"
     echo -e "${GREEN}Wordlists par défaut copiées avec succès vers ${WORDLISTS_TARGET_DIR} et permissions définies.${NC}\n"
 else
@@ -245,12 +254,13 @@ fi
 
 # --- Pré-traitement : Correction des fichiers C++ avant compilation ---
 echo -e "${BLUE}--- Pré-traitement des fichiers C++ ---${NC}" # Ajout de titre de section
-echo -e "${INFO}Correction de la fonction 'reduce_hash' dans les fichiers C++...${NC}"
+echo -e "${INFO}Correction de la fonction 'reduce_hash' dans les fichiers C++ (si nécessaire)...${NC}"
 
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
+CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Seul hashcracker.cpp est concerné par cette correction
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
+        # Vérifie si le motif existe avant d'appliquer la sédation
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
             sed -i '/std::string reduced_string = "";/{
                 N;N;N;N;N;N;N;N;N;
