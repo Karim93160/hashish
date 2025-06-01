@@ -27,6 +27,10 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
+// Inclure le nouveau module de reconnaissance de hachage
+// Assure-toi que le chemin est correct si hash_recon.h est dans un sous-dossier
+#include "hash_recon.h" 
+
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"
 #define RED     "\033[31m"
@@ -86,6 +90,9 @@ std::string calculate_hash_openssl(const std::string& input, const EVP_MD* diges
     return bytes_to_hex_string(digest, digest_len);
 }
 
+// NOTE : detect_hash_type_str sera toujours utilisée pour déterminer le type de digest OpenSSL.
+// La nouvelle fonction analyzeHash de hash_recon.h sera utilisée pour une analyse plus "humaine"
+// et des suggestions de cassage.
 std::string detect_hash_type_str(const std::string& hash_hex) {
     size_t len = hash_hex.length();
     if (len == 32) return "MD5";
@@ -721,14 +728,19 @@ int main() {
             std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
             break;
         }
+        
+        // Appeler la fonction analyzeHash du module hash_recon
+        // Cela affichera la suggestion de hachage et les paramètres de cassage
+        analyzeHash(input_hash_hex); 
 
         std::string detected_type_str = detect_hash_type_str(input_hash_hex);
         const EVP_MD* digest_algo = get_openssl_digest_type(detected_type_str);
 
-        std::cout << CR_DARK_GRAY << "   [ANALYSIS] Hash Type Detected: " << detected_type_str << RESET << std::endl;
+        // Cette ligne est maintenant redondante car analyzeHash fait déjà une analyse
+        // std::cout << CR_DARK_GRAY << "   [ANALYSIS] Hash Type Detected: " << detected_type_str << RESET << std::endl;
 
         if (detected_type_str == "INCONNU" || digest_algo == nullptr) {
-            std::cerr << CR_RED << "[ERROR] Unknown or unsupported hash type. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
+            std::cerr << CR_RED << "[ERROR] Unknown or unsupported hash type for cracking. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
             std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cin.get();
