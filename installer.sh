@@ -163,7 +163,7 @@ else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
 fi
 echo -e "${BLUE}Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++...${NC}"
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
+CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Garde cette ligne car on corrige hashcracker.cpp
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
@@ -186,46 +186,52 @@ std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
     fi
 done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
+
+# Définition des chemins des fichiers source C++
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
-HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp"
+HASH_RECON_CPP_SOURCE="$REPO_PATH/modules/hash_recon.cpp" # Nouveau chemin pour hash_recon.cpp
+
 HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
-echo -e "${BLUE}Vérification et compilation du module C++ 'hashcracker.cpp'...${NC}"
-if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
-  echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
+
+echo -e "${BLUE}Vérification et compilation des modules C++ 'hashcracker.cpp' et 'hash_recon.cpp'...${NC}"
+
+# Vérifie si les fichiers sources existent
+if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
+  echo -e "${INFO}Fichiers sources C++ 'hashcracker.cpp' et 'hash_recon.cpp' trouvés.${NC}"
+
+  # Définition des chemins pour OpenSSL si nécessaire (Termux par défaut)
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
-  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE...${NC}"
-  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" -lssl -lcrypto${NC}"
-  if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
-     -std=c++17 -fopenmp -pthread \
+
+  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE et $HASH_RECON_CPP_SOURCE en 'hashcracker'...${NC}"
+  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" \"$HASH_RECON_CPP_SOURCE\" -o \"$HASHCRACKER_FINAL_EXECUTABLE\" -lcrypto -lssl -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" ${NC}"
+
+  # La commande de compilation a été mise à jour ici
+  if g++ "$HASHCRACKER_CPP_SOURCE" "$HASH_RECON_CPP_SOURCE" -o "$HASHCRACKER_FINAL_EXECUTABLE" \
+     -lcrypto -lssl -std=c++17 -fopenmp -pthread \
      -I"$OPENSSL_INCLUDE_PATH" \
-     -L"$OPENSSL_LIB_PATH" \
-     -lssl -lcrypto; then
-    echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
+     -L"$OPENSSL_LIB_PATH"; then
+    echo -e "${GREEN}Modules C++ compilés avec succès vers : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
+
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
         echo -e "${RED}Erreur: Le dossier cible des modules '$MODULES_TARGET_DIR' n'existe pas. Impossible de déplacer l'exécutable C++.${NC}"
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
         exit 1
     fi
-    echo -e "${INFO}Déplacement de l'exécutable compilé vers : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
-    if mv "$HASHCRACKER_TEMP_EXECUTABLE" "$HASHCRACKER_FINAL_EXECUTABLE"; then
-        echo -e "${GREEN}Exécutable C++ déplacé avec succès.${NC}"
-        if [ -f "$HASHCRACKER_FINAL_EXECUTABLE" ]; then
-            chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
-            echo -e "${GREEN}Permissions d'exécution accordées à $HASHCRACKER_FINAL_EXECUTABLE.${NC}"
-        else
-            echo -e "${RED}Erreur: L'exécutable C++ n'a pas été trouvé après le déplacement. Problème de chemin ou de fichier manquant.${NC}"
-            echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
-            exit 1
-        fi
+    # Plus besoin de déplacer si on compile directement vers le chemin final
+    # echo -e "${INFO}Déplacement de l'exécutable compilé vers : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
+    
+    if [ -f "$HASHCRACKER_FINAL_EXECUTABLE" ]; then
+        chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
+        echo -e "${GREEN}Permissions d'exécution accordées à $HASHCRACKER_FINAL_EXECUTABLE.${NC}"
     else
-        echo -e "${RED}Erreur: Impossible de déplacer l'exécutable C++ vers $HASHCRACKER_FINAL_EXECUTABLE. Vérifiez les permissions du dossier cible ou l'espace disque.${NC}"
+        echo -e "${RED}Erreur: L'exécutable C++ n'a pas été trouvé après la compilation. Problème de chemin ou de fichier manquant.${NC}"
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
         exit 1
     fi
   else
     echo -e "${RED}------------------------------------------------------------------${NC}"
-    echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp.${NC}"
+    echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp et hash_recon.cpp.${NC}"
     echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
     echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++.${NC}"
     echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
@@ -233,8 +239,8 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
     exit 1
   fi
 else
-  echo -e "${YELLOW}Fichier source hashcracker.cpp non trouvé dans $HASHCRACKER_CPP_SOURCE. La compilation C++ est ignorée.${NC}"
-  echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible.${NC}"
+  echo -e "${YELLOW}Un ou plusieurs fichiers source C++ (hashcracker.cpp, hash_recon.cpp) n'ont pas été trouvés dans '$REPO_PATH/modules'. La compilation C++ est ignorée.${NC}"
+  echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
 fi
 echo ""
 RAINBOW_GENERATOR_OLD_EXECUTABLE="$MODULES_TARGET_DIR/rainbow_generator"
