@@ -224,7 +224,7 @@ fi
 echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.${NC}\n"
 
 # --- Copie des fichiers d'en-tête C++ (hash_recon.h) ---
-echo -e "${BLUE}--- Copie du fichier d'en-tête C++ (hash_recon.h) ---${NC}" # Ajout de titre de section
+echo -e "${BLUE}--- Copie des fichiers d'en-tête C++ (hash_recon.h) ---${NC}" # Ajout de titre de section
 if [ -f "$REPO_PATH/modules/hash_recon.h" ]; then
     cp "$REPO_PATH/modules/hash_recon.h" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur: Impossible de copier hash_recon.h. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
     chmod +r "$MODULES_TARGET_DIR/hash_recon.h"
