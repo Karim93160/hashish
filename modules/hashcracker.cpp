@@ -23,6 +23,8 @@
 #endif
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include "hash_recon.h" // <-- AJOUTÉ : Inclusion du fichier d'en-tête pour la reconnaissance de hachage
+
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"
 #define RED     "\033[31m"
@@ -40,6 +42,8 @@
 #define REVERSE "\033[7m"
 #define HIDDEN  "\033[8m"
 #define STRIKETHROUGH "\033[9m"
+
+// Macros de couleur pour une meilleure lisibilité dans la console
 #define CR_RED    RED BOLD
 #define CR_GREEN  GREEN BOLD
 #define CR_YELLOW YELLOW BOLD
@@ -48,31 +52,42 @@
 #define CR_MAGENTA MAGENTA BOLD FAINT
 #define CR_WHITE  WHITE BOLD
 #define CR_DARK_GRAY "\033[90m"
+
+// Variables globales atomiques et mutex pour la synchronisation des threads
 std::atomic<bool> g_hash_cracked_flag(false);
 std::string g_found_password;
 std::mutex g_cout_mutex;
 std::atomic<long long> g_total_attempts_bruteforce(0);
+
+// Convertit un tableau de bytes en une chaîne hexadécimale
 std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     std::stringstream ss;
-    ss << std::hex << std::setfill('0');
+    ss << std::hex << std::setfill('0'); // Définit le format hexadécimal et remplit avec des '0'
     for (size_t i = 0; i < len; ++i) {
-        ss << std::setw(2) << static_cast<unsigned int>(bytes[i]);
+        ss << std::setw(2) << static_cast<unsigned int>(bytes[i]); // Formate chaque byte sur 2 caractères
     }
     return ss.str();
 }
+
+// Calcule le hachage d'une entrée donnée en utilisant OpenSSL
 std::string calculate_hash_openssl(const std::string& input, const EVP_MD* digest_type) {
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new(); // Crée un nouveau contexte de hachage
     if (mdctx == nullptr) {
-        return "";
+        return ""; // Retourne vide en cas d'erreur
     }
+    // Initialise le hachage avec le type de digest spécifié
     if (1 != EVP_DigestInit_ex(mdctx, digest_type, nullptr)) { EVP_MD_CTX_free(mdctx); return ""; }
+    // Met à jour le hachage avec les données d'entrée
     if (1 != EVP_DigestUpdate(mdctx, input.c_str(), input.length())) { EVP_MD_CTX_free(mdctx); return ""; }
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_len;
+    unsigned char digest[EVP_MAX_MD_SIZE]; // Tableau pour stocker le résultat du hachage
+    unsigned int digest_len; // Longueur du hachage résultant
+    // Finalise le hachage et obtient le résultat
     if (1 != EVP_DigestFinal_ex(mdctx, digest, &digest_len)) { EVP_MD_CTX_free(mdctx); return ""; }
-    EVP_MD_CTX_free(mdctx);
-    return bytes_to_hex_string(digest, digest_len);
+    EVP_MD_CTX_free(mdctx); // Libère le contexte
+    return bytes_to_hex_string(digest, digest_len); // Convertit et retourne le hachage en hexadécimal
 }
+
+// Détecte le type de hachage en fonction de sa longueur
 std::string detect_hash_type_str(const std::string& hash_hex) {
     size_t len = hash_hex.length();
     if (len == 32) return "MD5";
@@ -82,6 +97,8 @@ std::string detect_hash_type_str(const std::string& hash_hex) {
     if (len == 128) return "SHA512";
     return "INCONNU";
 }
+
+// Obtient le type de digest OpenSSL correspondant à une chaîne de type de hachage
 const EVP_MD* get_openssl_digest_type(const std::string& hash_type_str) {
     if (hash_type_str == "MD5") return EVP_md5();
     if (hash_type_str == "SHA1") return EVP_sha1();
@@ -90,17 +107,21 @@ const EVP_MD* get_openssl_digest_type(const std::string& hash_type_str) {
     if (hash_type_str == "SHA512") return EVP_sha512();
     return nullptr;
 }
+
+// Calcule le nombre maximal de tentatives pour une attaque par force brute
 long double calculate_max_attempts(int charset_size, int min_len, int max_len) {
     long double total_attempts = 0;
     for (int len = min_len; len <= max_len; ++len) {
         if (charset_size > 0) {
             total_attempts += std::pow((long double)charset_size, (long double)len);
         } else {
-            return 0;
+            return 0; // Taille du charset invalide
         }
     }
     return total_attempts;
 }
+
+// Formate un grand nombre de tentatives pour une meilleure lisibilité (K, M, G, etc.)
 std::string format_attempts(long double attempts) {
     std::stringstream ss;
     if (attempts < 1000) {
@@ -120,6 +141,8 @@ std::string format_attempts(long double attempts) {
     }
     return ss.str();
 }
+
+// Formate une durée en secondes en un format lisible (jours, heures, minutes, secondes)
 std::string format_time_duration(long double seconds) {
     if (seconds < 60) {
         return std::to_string(static_cast<int>(seconds)) + " seconds";
@@ -140,11 +163,14 @@ std::string format_time_duration(long double seconds) {
     ss << min << "m " << sec << "s";
     return ss.str();
 }
+
+// Exécute un benchmark pour estimer la vitesse de hachage
 double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int num_threads) {
     std::cout << CR_CYAN << "\n[BENCHMARK] Running a quick benchmark to estimate speed..." << RESET << std::endl;
-    const int benchmark_attempts_per_thread = 50000;
+    const int benchmark_attempts_per_thread = 50000; // Nombre de tentatives par thread
     std::atomic<long long> benchmark_total_hashes(0);
     auto benchmark_start_time = std::chrono::high_resolution_clock::now();
+
     #ifdef _OPENMP
     #pragma omp parallel num_threads(num_threads)
     {
@@ -156,12 +182,14 @@ double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int 
         }
     }
     #else
+    // Fallback pour les systèmes sans OpenMP
     std::string test_input_base = "bench_input_0";
     for (int j = 0; j < benchmark_attempts_per_thread * num_threads; ++j) {
         calculate_hash_openssl(test_input_base + std::to_string(j), digest_type);
         benchmark_total_hashes++;
     }
     #endif
+
     auto benchmark_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> benchmark_duration = benchmark_end_time - benchmark_start_time;
     double hashes_per_second = 0;
@@ -171,6 +199,8 @@ double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int 
     std::cout << CR_GREEN << "[BENCHMARK] Estimated speed: " << std::fixed << std::setprecision(2) << hashes_per_second << " H/s" << RESET << std::endl;
     return hashes_per_second;
 }
+
+// Obtient le répertoire de l'exécutable
 std::string get_executable_dir() {
     std::string exec_path;
 #ifdef __linux__
@@ -189,6 +219,7 @@ std::string get_executable_dir() {
         }
     }
 #else
+    // Pour d'autres OS, utilise le chemin courant
     try {
         return std::filesystem::current_path().string();
     } catch (const std::filesystem::filesystem_error& e) {
@@ -197,20 +228,24 @@ std::string get_executable_dir() {
     }
 #endif
 }
+
+// Fonction de réduction pour les tables arc-en-ciel
 std::string reduce_hash(const std::string& hash, size_t target_len, const std::string& charset, int r_index) {
     if (charset.empty() || target_len == 0) return "";
     std::string reduced_string = "";
     std::vector<unsigned int> seed_data;
     for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }
-    seed_data.push_back(static_cast<unsigned int>(r_index));
+    seed_data.push_back(static_cast<unsigned int>(r_index)); // Ajoute l'index de réduction au seed
     std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());
     std::mt19937 generator(seed_sequence);
-    std::uniform_int_distribution<> distribution(0, charset.length() - 1);
+    std::uniform_int_distribution<> distribution(0, charset.length() - 1); // Distribution uniforme sur le charset
     for (size_t i = 0; i < target_len; ++i) {
-        reduced_string += charset[distribution(generator)];
+        reduced_string += charset[distribution(generator)]; // Sélectionne des caractères aléatoires du charset
     }
     return reduced_string;
 }
+
+// Effectue une attaque par dictionnaire (wordlist)
 void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* digest_type) {
     std::cout << "\n" << CR_BLUE << ">>> [SCANNING] Initiating Dictionary Attack..." << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Target Hash   : " << target_hash << RESET << std::endl;
@@ -220,78 +255,92 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
     std::cout << CR_CYAN << " (They should be in the 'wordlists/' directory relative to the executable)" << RESET << std::endl;
     std::cout << CR_YELLOW << " Enter 'Y' for default, or 'N' to specify a custom wordlist path: > " << RESET;
     std::cin >> choice;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Nettoie le buffer d'entrée
+
     std::vector<std::string> wordlist_paths;
-    std::string base_path = get_executable_dir();
+    std::string base_path = get_executable_dir(); // Obtient le chemin de l'exécutable
     if (!base_path.empty() && base_path.back() != std::filesystem::path::preferred_separator) {
         base_path += std::filesystem::path::preferred_separator;
     }
+
     if (tolower(choice) == 'y') {
         std::cout << CR_DARK_GRAY << "    Using default wordlists..." << RESET << std::endl;
         std::string default_wordlist_dir = base_path + "wordlists" + std::filesystem::path::preferred_separator;
         for (int i = 1; i <= 10; ++i) {
             std::stringstream ss;
             ss << default_wordlist_dir << "common.part." << std::setw(2) << std::setfill('0') << i;
-            wordlist_paths.push_back(ss.str());
+            wordlist_paths.push_back(ss.str()); // Ajoute les chemins des wordlists par défaut
         }
     } else {
         std::cout << CR_YELLOW << " [CUSTOM WORDLIST PATH] Enter full path to your wordlist > " << RESET;
         std::getline(std::cin, wordlist_path_user);
-        wordlist_paths.push_back(wordlist_path_user);
+        wordlist_paths.push_back(wordlist_path_user); // Ajoute le chemin de la wordlist personnalisée
     }
+
     if (!digest_type) {
         std::cerr << CR_RED << "[ERROR] Invalid OpenSSL digest type. Aborting." << RESET << std::endl;
         return;
     }
+
     long long total_attempts = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
+
     for (const std::string& wordlist_path : wordlist_paths) {
-        if (g_hash_cracked_flag.load()) break;
+        if (g_hash_cracked_flag.load()) break; // Arrête si le hachage est déjà cracké
         std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
         std::cout << CR_DARK_GRAY << "    Processing Wordlist: " << wordlist_path << RESET << std::endl;
         std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
-        std::ifstream wordlist_file(wordlist_path);
+
+        std::ifstream wordlist_file(wordlist_path); // Ouvre le fichier de la wordlist
         if (!wordlist_file.is_open()) {
             std::cerr << CR_RED << "[ERROR] Failed to open wordlist: " << wordlist_path << " (" << strerror(errno) << ")" << RESET << std::endl;
             std::cerr << CR_RED << "[HINT] Check path and file permissions. If using default, ensure 'wordlists/' exists and contains the files." << RESET << std::endl;
             continue;
         }
+
         std::string word;
         while (std::getline(wordlist_file, word) && !g_hash_cracked_flag.load()) {
+            // Supprime le caractère de retour chariot si présent (pour compatibilité Windows)
             if (!word.empty() && word.back() == '\r') {
                 word.pop_back();
             }
-            if (word.empty()) continue;
+            if (word.empty()) continue; // Ignore les lignes vides
+
             total_attempts++;
-            if (total_attempts % 100000 == 0) {
-                std::lock_guard<std::mutex> lock(g_cout_mutex);
+            if (total_attempts % 100000 == 0) { // Affiche la progression toutes les 100 000 tentatives
+                std::lock_guard<std::mutex> lock(g_cout_mutex); // Protège la sortie console
                 std::cout << "\r" << CR_YELLOW << "[PROGRESS] Dictionary: " << format_attempts(total_attempts) << " words scanned. Current word: " << word.substr(0, std::min((size_t)20, word.length())) << "..." << std::flush << RESET;
             }
-            std::string current_hash = calculate_hash_openssl(word, digest_type);
-            if (current_hash == target_hash) {
+
+            std::string current_hash = calculate_hash_openssl(word, digest_type); // Calcule le hachage du mot
+            if (current_hash == target_hash) { // Si le hachage correspond
                 std::lock_guard<std::mutex> lock(g_cout_mutex);
-                if (!g_hash_cracked_flag.load()) {
+                if (!g_hash_cracked_flag.load()) { // S'assure qu'un seul thread met à jour le résultat
                     g_found_password = word;
-                    g_hash_cracked_flag.store(true);
-                    std::cout << "\r" << std::string(120, ' ') << "\r";
+                    g_hash_cracked_flag.store(true); // Signale que le hachage est cracké
+                    std::cout << "\r" << std::string(120, ' ') << "\r"; // Efface la ligne de progression
                     std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
                 }
-                break;
+                break; // Sort de la boucle de la wordlist
             }
         }
         wordlist_file.close();
     }
+
     if (!g_hash_cracked_flag.load()) {
-        std::cout << "\r" << std::string(80, ' ') << "\r";
+        std::cout << "\r" << std::string(80, ' ') << "\r"; // Efface la ligne de progression si non cracké
     }
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
+
     if (!g_hash_cracked_flag.load()) {
         std::cout << CR_YELLOW << "[INFO] Hash not cracked using dictionary. (" << format_attempts(total_attempts) << " attempts)" << RESET << std::endl;
     }
     std::cout << CR_BLUE << "[COMPLETED] Dictionary attack finished in " << std::fixed << std::setprecision(2) << duration.count() << " seconds." << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
+
+// Fonction récursive pour générer les combinaisons de force brute (avec OpenMP)
 void generate_combinations_recursive_omp(
     std::string current_combination,
     int target_length,
@@ -299,17 +348,19 @@ void generate_combinations_recursive_omp(
     const std::string& target_hash,
     const EVP_MD* digest_type)
 {
-    if (g_hash_cracked_flag.load()) {
+    if (g_hash_cracked_flag.load()) { // Arrête si le hachage est déjà cracké
         return;
     }
+
     if (current_combination.length() == target_length) {
-        g_total_attempts_bruteforce++;
-        if (g_total_attempts_bruteforce % 500000 == 0) {
+        g_total_attempts_bruteforce++; // Incrémente le compteur de tentatives
+        if (g_total_attempts_bruteforce % 500000 == 0) { // Affiche la progression toutes les 500 000 tentatives
             std::lock_guard<std::mutex> cout_lock(g_cout_mutex);
             std::cout << "\r" << CR_YELLOW << "[PROGRESS] Bruteforce: " << format_attempts(g_total_attempts_bruteforce) << " attempts. Testing: " << current_combination << std::flush << RESET;
         }
-        std::string hashed_attempt = calculate_hash_openssl(current_combination, digest_type);
-        if (hashed_attempt == target_hash) {
+
+        std::string hashed_attempt = calculate_hash_openssl(current_combination, digest_type); // Calcule le hachage de la combinaison
+        if (hashed_attempt == target_hash) { // Si le hachage correspond
             std::lock_guard<std::mutex> lock(g_cout_mutex);
             if (!g_hash_cracked_flag.load()) {
                 g_found_password = current_combination;
@@ -320,11 +371,15 @@ void generate_combinations_recursive_omp(
         }
         return;
     }
+
+    // Génère les combinaisons récursivement
     for (char c : charset) {
         if (g_hash_cracked_flag.load()) return;
         generate_combinations_recursive_omp(current_combination + c, target_length, charset, target_hash, digest_type);
     }
 }
+
+// Effectue une attaque par force brute
 void perform_bruteforce_attack(
     const std::string& target_hash,
     const EVP_MD* digest_type,
@@ -337,6 +392,7 @@ void perform_bruteforce_attack(
     std::cout << CR_DARK_GRAY << "    Charset        : " << std::quoted(charset_str) << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Length Range   : " << min_len << "-" << max_len << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
+
     if (!digest_type) {
         std::cerr << CR_RED << "[ERROR] Invalid OpenSSL digest type. Aborting." << RESET << std::endl;
         return;
@@ -345,14 +401,16 @@ void perform_bruteforce_attack(
         std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot perform bruteforce." << RESET << std::endl;
         return;
     }
+
     unsigned int num_threads_to_use = 1;
     #ifdef _OPENMP
     num_threads_to_use = omp_get_max_threads();
-    if (num_threads_to_use == 0) num_threads_to_use = 2;
+    if (num_threads_to_use == 0) num_threads_to_use = 2; // S'assure d'avoir au moins 2 threads si possible
     #else
-    num_threads_to_use = std::thread::hardware_concurrency();
-    if (num_threads_to_use == 0) num_threads_to_use = 2;
+    num_threads_to_use = std::thread::hardware_concurrency(); // Détecte le nombre de cœurs logiques
+    if (num_threads_to_use == 0) num_threads_to_use = 2; // Fallback
     #endif
+
     double hashes_per_second = run_benchmark(digest_type, charset_str, num_threads_to_use);
     if (hashes_per_second <= 0) {
         std::cerr << CR_RED << "[ERROR] Benchmark failed or returned zero H/s. Cannot estimate time." << RESET << std::endl;
@@ -365,6 +423,7 @@ void perform_bruteforce_attack(
             return;
         }
     }
+
     long double estimated_max_attempts = calculate_max_attempts(charset_str.length(), min_len, max_len);
     std::cout << CR_MAGENTA << "\n[ESTIMATION] Max attempts for full crack: " << format_attempts(estimated_max_attempts) << RESET << std::endl;
     if (hashes_per_second > 0) {
@@ -372,6 +431,7 @@ void perform_bruteforce_attack(
         std::cout << CR_MAGENTA << "[ESTIMATION] Estimated time for full crack: " << format_time_duration(estimated_time_seconds) << RESET << std::endl;
         std::cout << CR_MAGENTA << "             (This is an estimation and depends on CPU/GPU load and hash complexity)" << RESET << std::endl;
     }
+
     char confirm_choice;
     std::cout << CR_YELLOW << "Do you want to proceed with the bruteforce attack? (y/n) > " << RESET;
     std::cin >> confirm_choice;
@@ -380,39 +440,49 @@ void perform_bruteforce_attack(
         std::cout << CR_YELLOW << "[INFO] Bruteforce attack cancelled by user." << RESET << std::endl;
         return;
     }
-    g_total_attempts_bruteforce = 0;
+
+    g_total_attempts_bruteforce = 0; // Réinitialise le compteur global
     auto start_time = std::chrono::high_resolution_clock::now();
     std::cout << CR_DARK_GRAY << "    Using " << num_threads_to_use << " threads." << RESET << std::endl;
-    for (int len = min_len; len <= max_len; ++len) {
+
+    for (int len = min_len; len <= max_len; ++len) { // Itère sur les longueurs de mot de passe
         if (g_hash_cracked_flag.load()) break;
         {
             std::lock_guard<std::mutex> lock(g_cout_mutex);
             std::cout << "\n" << CR_CYAN << "[INFO] Testing passwords of length " << len << "..." << RESET << std::endl;
         }
+
         #ifdef _OPENMP
+        // Utilise OpenMP pour paralléliser la boucle
         #pragma omp parallel for shared(g_hash_cracked_flag, g_found_password, g_total_attempts_bruteforce, g_cout_mutex) schedule(dynamic) num_threads(num_threads_to_use)
         #endif
-        for (size_t i = 0; i < charset_str.length(); ++i) {
+        for (size_t i = 0; i < charset_str.length(); ++i) { // Chaque thread commence avec un caractère initial différent
             if (g_hash_cracked_flag.load()) {
                 continue;
             }
             std::string initial_string(1, charset_str[i]);
+            // Appelle la fonction récursive pour générer les combinaisons
             generate_combinations_recursive_omp(initial_string, len, charset_str, target_hash, digest_type);
         }
+
         if (g_hash_cracked_flag.load()) {
-            std::cout << "\r" << std::string(80, ' ') << "\r";
+            std::cout << "\r" << std::string(80, ' ') << "\r"; // Efface la ligne de progression
             break;
         }
     }
+
     if (!g_hash_cracked_flag.load()) {
         std::cout << "\r" << std::string(80, ' ') << "\r";
         std::cout << CR_YELLOW << "[INFO] Hash not cracked using bruteforce." << RESET << std::endl;
     }
+
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
     std::cout << CR_BLUE << "[COMPLETED] Bruteforce attack finished in " << std::fixed << std::setprecision(2) << duration.count() << " seconds. (" << format_attempts(g_total_attempts_bruteforce) << " attempts)" << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
+
+// Génère une table arc-en-ciel
 void generate_rainbow_table(
     const std::string& output_file,
     const EVP_MD* digest_type,
@@ -430,6 +500,7 @@ void generate_rainbow_table(
     std::cout << CR_DARK_GRAY << "    Number of Chains: " << num_chains << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Chain Length   : " << chain_length << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
+
     if (!digest_type) {
         std::cerr << CR_RED << "[ERROR] Invalid OpenSSL digest type. Aborting." << RESET << std::endl;
         return;
@@ -446,45 +517,58 @@ void generate_rainbow_table(
         std::cerr << CR_RED << "[ERROR] Number of chains and chain length must be greater than 0." << RESET << std::endl;
         return;
     }
-    std::ofstream outfile(output_file);
+
+    std::ofstream outfile(output_file); // Ouvre le fichier de sortie
     if (!outfile.is_open()) {
         std::cerr << CR_RED << "[ERROR] Failed to open output file: " << output_file << " (" << strerror(errno) << ")" << RESET << std::endl;
         return;
     }
+
+    // Générateurs de nombres aléatoires pour les mots de départ
     std::mt19937 generator_initial_word(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_int_distribution<> charset_dist(0, charset.length() - 1);
     std::uniform_int_distribution<> len_dist(min_len, max_len);
+
     auto start_time = std::chrono::high_resolution_clock::now();
     long long generated_chains_count = 0;
-    for (long long i = 0; i < num_chains; ++i) {
-        int current_len_for_reduction = len_dist(generator_initial_word);
+
+    for (long long i = 0; i < num_chains; ++i) { // Boucle pour générer le nombre de chaînes demandé
+        int current_len_for_reduction = len_dist(generator_initial_word); // Longueur aléatoire pour le mot
         std::string start_word = "";
         for (int k = 0; k < current_len_for_reduction; ++k) {
-            start_word += charset[charset_dist(generator_initial_word)];
+            start_word += charset[charset_dist(generator_initial_word)]; // Génère le mot de départ aléatoire
         }
+
         std::string current_word_in_chain = start_word;
         std::string current_hash_in_chain;
-        for (int j = 0; j < chain_length; ++j) {
-            current_hash_in_chain = calculate_hash_openssl(current_word_in_chain, digest_type);
-            if (j == chain_length - 1) {
+
+        for (int j = 0; j < chain_length; ++j) { // Génère une chaîne
+            current_hash_in_chain = calculate_hash_openssl(current_word_in_chain, digest_type); // Hache le mot actuel
+            if (j == chain_length - 1) { // Si c'est la fin de la chaîne, on a le hash final
                 break;
             }
-            current_word_in_chain = reduce_hash(current_hash_in_chain, current_len_for_reduction, charset, j);
+            current_word_in_chain = reduce_hash(current_hash_in_chain, current_len_for_reduction, charset, j); // Réduit le hash en un nouveau mot
         }
-        outfile << start_word << ":" << current_hash_in_chain << "\n";
+
+        outfile << start_word << ":" << current_hash_in_chain << "\n"; // Écrit la paire (mot de départ:hash final)
         generated_chains_count++;
-        if (generated_chains_count % 1000 == 0) {
+
+        if (generated_chains_count % 1000 == 0) { // Affiche la progression
             std::lock_guard<std::mutex> lock(g_cout_mutex);
             std::cout << "\r" << CR_YELLOW << "[PROGRESS] Generated " << format_attempts(generated_chains_count) << "/" << format_attempts(num_chains) << " chains. Last word: " << start_word << std::flush << RESET;
         }
     }
-    outfile.close();
-    std::cout << "\r" << std::string(80, ' ') << "\r";
+
+    outfile.close(); // Ferme le fichier
+    std::cout << "\r" << std::string(80, ' ') << "\r"; // Efface la ligne de progression
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
+
     std::cout << CR_GREEN << "[COMPLETED] Rainbow table generated in " << std::fixed << std::setprecision(2) << duration.count() << " seconds. (" << format_attempts(generated_chains_count) << " chains saved)" << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
+
+// Effectue une attaque par table arc-en-ciel
 void perform_rainbow_attack(const std::string& target_hash, const std::string& rainbow_table_path, const EVP_MD* digest_type, const std::string& charset_for_reduction, int chain_length, int assumed_min_len, int assumed_max_len) {
     std::cout << "\n" << CR_BLUE << ">>> [SCANNING] Initiating Rainbow Table Attack..." << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Target Hash   : " << target_hash << RESET << std::endl;
@@ -493,6 +577,7 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
     std::cout << CR_DARK_GRAY << "    Charset Used  : " << std::quoted(charset_for_reduction) << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Assumed Pass Lengths: " << assumed_min_len << "-" << assumed_max_len << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
+
     if (!digest_type) {
         std::cerr << CR_RED << "[ERROR] Invalid OpenSSL digest type. Aborting." << RESET << std::endl;
         return;
@@ -509,18 +594,21 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
         std::cerr << CR_RED << "[ERROR] Invalid assumed password length range. Min length > 0 and Max length >= Min length." << RESET << std::endl;
         return;
     }
-    std::ifstream rainbow_table_file(rainbow_table_path);
+
+    std::ifstream rainbow_table_file(rainbow_table_path); // Ouvre le fichier de table arc-en-ciel
     if (!rainbow_table_file.is_open()) {
         std::cerr << CR_RED << "[ERROR] Failed to open rainbow table: " << rainbow_table_path << " (" << strerror(errno) << ")" << RESET << std::endl;
         std::cerr << CR_RED << "[HINT] Check path and file permissions. Make sure the table exists or generate one using option 4." << RESET << std::endl;
         return;
     }
-    std::map<std::string, std::string> rainbow_map;
+
+    std::map<std::string, std::string> rainbow_map; // Carte pour stocker la table (hash_final -> mot_de_depart)
     std::string line;
     long long loaded_entries = 0;
     std::cout << CR_BLUE << "[LOADING] Loading rainbow table into memory. This may take a while for large tables..." << RESET << std::endl;
     auto load_start_time = std::chrono::high_resolution_clock::now();
-    while (std::getline(rainbow_table_file, line)) {
+
+    while (std::getline(rainbow_table_file, line)) { // Charge la table en mémoire
         size_t colon_pos = line.find(':');
         if (colon_pos != std::string::npos) {
             std::string start_word = line.substr(0, colon_pos);
@@ -534,26 +622,38 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
         }
     }
     rainbow_table_file.close();
+
     auto load_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> load_duration = load_end_time - load_start_time;
     std::cout << "\r" << std::string(80, ' ') << "\r";
     std::cout << CR_GREEN << "[LOADED] Rainbow table loaded. " << format_attempts(loaded_entries) << " entries in " << std::fixed << std::setprecision(2) << load_duration.count() << " seconds." << RESET << std::endl;
+
     std::cout << CR_BLUE << "\n[CRACKING] Starting rainbow table lookup..." << RESET << std::endl;
     auto crack_start_time = std::chrono::high_resolution_clock::now();
     bool cracked = false;
+
+    // Itère sur les longueurs de mots de passe possibles
     for (int current_len_for_reduction = assumed_min_len; current_len_for_reduction <= assumed_max_len; ++current_len_for_reduction) {
         if (g_hash_cracked_flag.load()) break;
-        for (int i = 0; i < chain_length; ++i) {
+        // Effectue des "walks" sur les chaînes
+        for (int i = 0; i < chain_length; ++i) { // i représente le point de départ potentiel dans la chaîne
             if (g_hash_cracked_flag.load()) break;
+
             std::string current_hash_in_walk = target_hash;
             std::string current_word_in_walk;
+
+            // Remonte la chaîne à partir du hachage cible
             for (int j = i; j < chain_length; ++j) {
                 current_word_in_walk = reduce_hash(current_hash_in_walk, current_len_for_reduction, charset_for_reduction, j);
                 current_hash_in_walk = calculate_hash_openssl(current_word_in_walk, digest_type);
             }
+
+            // Vérifie si le hash final de la "walk" est dans la table
             if (rainbow_map.count(current_hash_in_walk)) {
                 std::string start_word_from_table = rainbow_map[current_hash_in_walk];
                 std::string potential_password = start_word_from_table;
+
+                // Reconstruit la chaîne depuis le mot de départ trouvé pour vérifier si un mot correspond
                 for (int k = 0; k <= i; ++k) {
                     std::string hashed_potential = calculate_hash_openssl(potential_password, digest_type);
                     if (hashed_potential == target_hash) {
@@ -567,35 +667,43 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
                         cracked = true;
                         break;
                     }
-                    if (k < i) {
+                    if (k < i) { // Continue la marche si ce n'est pas le dernier pas à vérifier
                         potential_password = reduce_hash(hashed_potential, current_len_for_reduction, charset_for_reduction, k);
                     }
                 }
                 if (cracked) break;
             }
-            if (i % 100 == 0) {
+
+            if (i % 100 == 0) { // Affiche la progression
                 std::lock_guard<std::mutex> lock(g_cout_mutex);
                 std::cout << "\r" << CR_YELLOW << "[PROGRESS] Rainbow: Checking position " << i << "/" << chain_length << " (len: " << current_len_for_reduction << ")..." << std::flush << RESET;
             }
         }
     }
-    std::cout << "\r" << std::string(100, ' ') << "\r";
+
+    std::cout << "\r" << std::string(100, ' ') << "\r"; // Efface la ligne de progression
     auto crack_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> crack_duration = crack_end_time - crack_start_time;
+
     if (!g_hash_cracked_flag.load()) {
         std::cout << CR_YELLOW << "[INFO] Hash not cracked using rainbow table." << RESET << std::endl;
     }
     std::cout << CR_BLUE << "[COMPLETED] Rainbow table attack finished in " << std::fixed << std::setprecision(2) << crack_duration.count() << " seconds." << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
+
+// Fonction principale du programme
 int main() {
-    ERR_load_crypto_strings();
-    OpenSSL_add_all_digests();
+    ERR_load_crypto_strings(); // Initialise les chaînes d'erreur OpenSSL
+    OpenSSL_add_all_digests(); // Charge tous les algorithmes de hachage OpenSSL
+
     while (true) {
-        std::cout << "\033[H\033[J";
+        std::cout << "\033[H\033[J"; // Nettoie l'écran
         const int terminal_width = 80;
         std::string title = "Hashcracker-V.CPP";
         std::string subtitle = "Karim";
+
+        // Affichage du titre et du sous-titre centrés
         int title_padding = (terminal_width - title.length()) / 2;
         std::cout << std::string(title_padding, ' ') << CR_RED BOLD << title << RESET << std::endl;
         int subtitle_padding = (terminal_width - (std::string("by ") + subtitle).length()) / 2;
@@ -604,26 +712,36 @@ int main() {
         std::cout << CR_MAGENTA << "\n    [INFO] Welcome to Hashcracker-V.CPP! " << RESET << std::endl;
         std::cout << CR_MAGENTA << "    [INFO] Your ultimate hash cracking and generation tool." << RESET << std::endl;
         std::cout << CR_BLUE << std::string(terminal_width, '=') << RESET << std::endl;
+
         std::string input_hash_hex;
         std::cout << CR_YELLOW << "\n [TARGET HASH] Enter hash to crack (or 'exit' to quit) > " << RESET;
         std::cin >> input_hash_hex;
-        std::transform(input_hash_hex.begin(), input_hash_hex.end(), input_hash_hex.begin(), ::tolower);
+        std::transform(input_hash_hex.begin(), input_hash_hex.end(), input_hash_hex.begin(), ::tolower); // Convertit le hachage en minuscules
+
         if (input_hash_hex == "exit") {
             std::cout << CR_BLUE << "\n==========================================================" << RESET << std::endl;
             std::cout << CR_CYAN << "  [GOODBYE] Exiting Hashcracker. See you soon! " << RESET << std::endl;
             std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
-            break;
+            break; // Quitte la boucle principale
         }
-        std::string detected_type_str = detect_hash_type_str(input_hash_hex);
-        const EVP_MD* digest_algo = get_openssl_digest_type(detected_type_str);
+
+        std::string detected_type_str = detect_hash_type_str(input_hash_hex); // Détecte le type par longueur
+        const EVP_MD* digest_algo = get_openssl_digest_type(detected_type_str); // Obtient l'algorithme OpenSSL
+
         std::cout << CR_DARK_GRAY << "   [ANALYSIS] Hash Type Detected: " << detected_type_str << RESET << std::endl;
+
+        // Appel de la fonction d'analyse des caractères du hachage
+        analyserTypeCaracteresHachage(input_hash_hex); // <-- NOUVEL APPEL ICI
+
         if (detected_type_str == "INCONNU" || digest_algo == nullptr) {
             std::cerr << CR_RED << "[ERROR] Unknown or unsupported hash type. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
             std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cin.get();
-            continue;
+            continue; // Retourne au début de la boucle
         }
+
+        // Sélection du type d'attaque
         std::cout << CR_BLUE << "\n--- [ATTACK SELECTION] --------------------------------" << RESET << std::endl;
         std::cout << CR_CYAN << " 1. Dictionary Attack (Wordlist)" << RESET << std::endl;
         std::cout << CR_CYAN << " 2. Bruteforce Attack (Character Set)" << RESET << std::endl;
@@ -633,9 +751,13 @@ int main() {
         std::cout << CR_YELLOW << " [SELECT ATTACK (1/2/3/4)] > " << RESET;
         std::cin >> attack_choice;
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        // Réinitialise les flags et variables globales avant chaque attaque
         g_hash_cracked_flag.store(false);
         g_found_password = "";
         g_total_attempts_bruteforce = 0;
+
+        // Exécution de l'attaque choisie
         if (attack_choice == 1) {
             perform_dictionary_attack(input_hash_hex, digest_algo);
         } else if (attack_choice == 2) {
@@ -647,6 +769,7 @@ int main() {
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
             predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
+
             std::cout << CR_CYAN << "   Choose a predefined charset or enter your own:" << RESET << std::endl;
             for (const auto& pair : predefined_charsets) {
                 std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
@@ -656,8 +779,10 @@ int main() {
             std::string charset_choice_str;
             std::cin >> charset_choice_str;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            
             std::string charset_input;
-            std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper);
+            std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper); // Convertit en majuscules pour la comparaison
+
             if (charset_choice_str == "C") {
                 std::cout << CR_YELLOW << " [CUSTOM CHARACTER SET] Enter your custom charset > " << RESET;
                 std::getline(std::cin, charset_input);
@@ -679,32 +804,38 @@ int main() {
                     charset_input = "";
                 }
             }
+
             if (charset_input.empty()) {
                 std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot perform bruteforce." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
+
             int min_l, max_l;
             std::cout << CR_YELLOW << " [MIN LENGTH] Enter minimum password length > " << RESET;
             std::cin >> min_l;
             std::cout << CR_YELLOW << " [MAX LENGTH] Enter maximum password length > " << RESET;
             std::cin >> max_l;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
             if (min_l <= 0 || max_l < min_l) {
                 std::cerr << CR_RED << "[ERROR] Invalid length range. Min length > 0 and Max length >= Min length." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
+
             perform_bruteforce_attack(input_hash_hex, digest_algo, charset_input, min_l, max_l);
         } else if (attack_choice == 3) {
             std::string base_path = get_executable_dir();
             if (!base_path.empty() && base_path.back() != std::filesystem::path::preferred_separator) {
                 base_path += std::filesystem::path::preferred_separator;
             }
-            std::string rainbow_table_file_path = base_path + "rainbow.txt";
+            std::string rainbow_table_file_path = base_path + "rainbow.txt"; // Chemin par défaut de la table arc-en-ciel
             std::cout << CR_DARK_GRAY << "  [INFO] Default Rainbow Table path set to: " << rainbow_table_file_path << RESET << std::endl;
+
+            // Définition des charsets prédéfinis (doivent correspondre à ceux de génération)
             std::map<int, std::pair<std::string, std::string>> predefined_charsets;
             predefined_charsets[1] = {"Lowercase letters (a-z)", "abcdefghijklmnopqrstuvwxyz"};
             predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
@@ -712,6 +843,7 @@ int main() {
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
             predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
+
             std::cout << CR_CYAN << "   Choose the charset used during table generation:" << RESET << std::endl;
             for (const auto& pair : predefined_charsets) {
                 std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
@@ -721,8 +853,10 @@ int main() {
             std::string charset_choice_str_reduction;
             std::cin >> charset_choice_str_reduction;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            
             std::string reduction_charset;
             std::transform(charset_choice_str_reduction.begin(), charset_choice_str_reduction.end(), charset_choice_str_reduction.begin(), ::toupper);
+
             if (charset_choice_str_reduction == "C") {
                 std::cout << CR_YELLOW << " [CUSTOM REDUCTION CHARSET] Enter the custom charset used for reduction (MUST MATCH GENERATION!) > " << RESET;
                 std::getline(std::cin, reduction_charset);
@@ -744,12 +878,14 @@ int main() {
                     reduction_charset = "";
                 }
             }
+
             if (reduction_charset.empty()) {
                 std::cerr << CR_RED << "[ERROR] Reduction charset is empty. Cannot perform rainbow attack." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
+
             int chain_len, assumed_min_len, assumed_max_len;
             std::cout << CR_YELLOW << " [CHAIN LENGTH] Enter the chain length used when generating the table (MUST MATCH GENERATION!) > " << RESET;
             std::cin >> chain_len;
@@ -758,27 +894,32 @@ int main() {
             std::cout << CR_YELLOW << " [MAX PASSWORD LENGTH] Enter the maximum password length used during generation (MUST MATCH GENERATION!) > " << RESET;
             std::cin >> assumed_max_len;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
             if (chain_len <= 0 || assumed_min_len <= 0 || assumed_max_len < assumed_min_len) {
                 std::cerr << CR_RED << "[ERROR] Invalid parameters for rainbow attack. Please check values." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
+
             perform_rainbow_attack(input_hash_hex, rainbow_table_file_path, digest_algo, reduction_charset, chain_len, assumed_min_len, assumed_max_len);
         } else if (attack_choice == 4) {
             std::cout << CR_BLUE << "\n--- [RAINBOW TABLE GENERATION PARAMETERS] -------------" << RESET << std::endl;
-            std::string output_filename = "rainbow.txt";
+            std::string output_filename = "rainbow.txt"; // Nom de fichier par défaut
             std::cout << CR_YELLOW << " [OUTPUT FILE] Enter desired output filename (e.g., my_rainbow_table.txt). Default: rainbow.txt > " << RESET;
             std::string temp_filename;
             std::getline(std::cin, temp_filename);
-            if (!temp_filename.empty()) {
+            if (!temp_filename.empty()) { // Utilise le nom de fichier personnalisé si fourni
                 output_filename = temp_filename;
             }
+
             std::string base_path = get_executable_dir();
             if (!base_path.empty() && base_path.back() != std::filesystem::path::preferred_separator) {
                 base_path += std::filesystem::path::preferred_separator;
             }
-            std::string full_output_path = base_path + output_filename;
+            std::string full_output_path = base_path + output_filename; // Chemin complet du fichier de sortie
+
+            // Définition des charsets prédéfinis pour la génération
             std::map<int, std::pair<std::string, std::string>> predefined_charsets;
             predefined_charsets[1] = {"Lowercase letters (a-z)", "abcdefghijklmnopqrstuvwxyz"};
             predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
@@ -786,6 +927,7 @@ int main() {
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
             predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
+
             std::cout << CR_CYAN << "   Choose a predefined charset or enter your own:" << RESET << std::endl;
             for (const auto& pair : predefined_charsets) {
                 std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
@@ -795,8 +937,10 @@ int main() {
             std::string charset_choice_str;
             std::cin >> charset_choice_str;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            
             std::string charset_gen_input;
             std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper);
+
             if (charset_choice_str == "C") {
                 std::cout << CR_YELLOW << " [CUSTOM CHARACTER SET] Enter your custom charset > " << RESET;
                 std::getline(std::cin, charset_gen_input);
@@ -818,54 +962,65 @@ int main() {
                     charset_gen_input = "";
                 }
             }
+
             if (charset_gen_input.empty()) {
                 std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot generate rainbow table." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
+
             int min_len_gen, max_len_gen;
             std::cout << CR_YELLOW << " [MIN LENGTH] Enter minimum password length for chains > " << RESET;
             std::cin >> min_len_gen;
             std::cout << CR_YELLOW << " [MAX LENGTH] Enter maximum password length for chains > " << RESET;
             std::cin >> max_len_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
             if (min_len_gen <= 0 || max_len_gen < min_len_gen) {
                 std::cerr << CR_RED << "[ERROR] Invalid length range. Min length > 0 and Max length >= Min length." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
+
             long long num_chains_gen;
             std::cout << CR_YELLOW << " [NUMBER OF CHAINS] Enter number of chains to generate (e.g., 1000000) > " << RESET;
             std::cin >> num_chains_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
             int chain_length_gen;
             std::cout << CR_YELLOW << " [CHAIN LENGTH] Enter length of each chain (e.g., 10000) > " << RESET;
             std::cin >> chain_length_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
             std::string hash_type_gen_str;
             std::cout << CR_YELLOW << " [HASH TYPE] Enter hash type (MD5, SHA1, SHA256, SHA512). MUST MATCH TARGET! > " << RESET;
             std::cin >> hash_type_gen_str;
             std::transform(hash_type_gen_str.begin(), hash_type_gen_str.end(), hash_type_gen_str.begin(), ::toupper);
             const EVP_MD* digest_algo_gen = get_openssl_digest_type(hash_type_gen_str);
+
             if (digest_algo_gen == nullptr) {
                 std::cerr << CR_RED << "[ERROR] Unsupported hash type for generation. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
                 std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
                 std::cin.get();
                 continue;
             }
-            long double estimated_file_size_bytes = (long double)num_chains_gen * ((long double)min_len_gen + (EVP_MD_size(digest_algo_gen) * 2) + 2);
+
+            // Estimation de la taille du fichier
+            long double estimated_file_size_bytes = (long double)num_chains_gen * ((long double)min_len_gen + (EVP_MD_size(digest_algo_gen) * 2) + 2); // +2 pour le ":" et "\n"
             std::cout << CR_MAGENTA << "\n[INFO] Generating a table of " << format_attempts(num_chains_gen) << " chains, each " << chain_length_gen << " steps long." << RESET << std::endl;
             std::cout << CR_MAGENTA << "       This will result in a file size of approximately "
                       << std::fixed << std::setprecision(2)
-                      << estimated_file_size_bytes / (1024.0 * 1024.0 * 1024.0)
+                      << estimated_file_size_bytes / (1024.0 * 1024.0 * 1024.0) // Convertit en Go
                       << " GB (estimation, can vary based on actual password lengths)." << RESET << std::endl;
             std::cout << CR_YELLOW << "       (Remember the actual size might be smaller if passwords are shorter than max_len_gen, or larger if max_len_gen is significantly used.)" << RESET << std::endl;
+            
             char confirm_choice_gen;
             std::cout << CR_YELLOW << "Do you want to proceed with rainbow table generation? (y/n) > " << RESET;
             std::cin >> confirm_choice_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
             if (tolower(confirm_choice_gen) != 'y') {
                 std::cout << CR_YELLOW << "[INFO] Rainbow table generation cancelled by user." << RESET << std::endl;
             } else {
@@ -875,6 +1030,7 @@ int main() {
         else {
             std::cerr << CR_RED << "[ERROR] Invalid attack choice. Please select 1, 2, 3, or 4." << RESET << std::endl;
         }
+
         std::cout << CR_BLUE << "\n==========================================================" << RESET << std::endl;
         if (g_hash_cracked_flag.load()) {
             std::cout << CR_GREEN << "  [CRACK COMPLETE] Password found! Returning to main menu. " << RESET << std::endl;
@@ -883,10 +1039,11 @@ int main() {
         }
         std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
         std::cout << CR_YELLOW << "Press Enter to continue..." << RESET;
-        std::cin.get();
+        std::cin.get(); // Attend l'entrée de l'utilisateur avant de boucler
     }
-    EVP_cleanup();
-    ERR_free_strings();
-    return 0;
+
+    EVP_cleanup(); // Nettoie les ressources OpenSSL
+    ERR_free_strings(); // Libère les chaînes d'erreur OpenSSL
+    return 0; // Termine le programme
 }
 
