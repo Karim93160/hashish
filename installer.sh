@@ -27,6 +27,14 @@ echo -e "${CYAN}=======================================${NC}"
 echo -e "${CYAN}${BOLD}  Installation de HASHISH Ethical Toolkit${NC}" # Ajout de BOLD
 echo -e "${CYAN}=======================================${NC}\n"
 
+# --- Vérification de Termux ---
+echo -e "${BLUE}--- Vérification de l'environnement Termux ---${NC}"
+if [ -z "$TERMUX_VERSION" ]; then
+    echo -e "${RED}Erreur : Ce script est conçu pour Termux. Veuillez l'exécuter dans un environnement Termux.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Détection de Termux réussie.${NC}\n"
+
 # --- Mise à jour et mise à niveau de Termux (bonne pratique) ---
 echo -e "${BLUE}--- Mise à jour et mise à niveau des paquets Termux ---${NC}" # Ajout de titre de section
 echo -e "${INFO}Mise à jour et mise à niveau des paquets système. Cela peut prendre un certain temps...${NC}"
@@ -109,8 +117,9 @@ if ! command -v g++ &> /dev/null; then
     install_package "build-essential" || { echo -e "${RED}${BOLD}Installation annulée.${NC}${RED} 'build-essential' est nécessaire pour compiler les modules C++.${NC}"; exit 1; }
 fi
 
-# Installation d'openssl (pour les bibliothèques de développement SSL/Crypto)
-# Note: 'pkg list-installed' vérifie si le paquet est déjà là.
+# Installation d'openssl-dev (pour les bibliothèques de développement SSL/Crypto, inclut les .h et .so)
+# Note: Sur Termux, le paquet 'openssl' contient généralement les bibliothèques de développement nécessaires.
+# Mais pour être explicite, nous allons vérifier la présence des en-têtes et lib crypto.
 if ! pkg list-installed | grep -q "^openssl/"; then
     echo -e "${YELLOW}OpenSSL non trouvé. Nécessaire pour la compilation C++. Installation de 'openssl'...${NC}"
     install_package "openssl" || { echo -e "${RED}${BOLD}Installation annulée.${NC}${RED} 'openssl' est nécessaire pour compiler les modules C++.${NC}"; exit 1; }
@@ -126,13 +135,13 @@ else
     echo -e "${GREEN}Commande 'clear' est déjà disponible.${NC}"
 fi
 
-# Ajout de la permission d'exécution à 'clear'
+# Ajout de la permission d'exécution à 'clear' (utile si installé par pkg, mais pas toujours executable par défaut pour les users)
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear
     echo -e "${GREEN}Permissions d'exécution accordées à '/data/data/com.termux/files/usr/bin/clear'.${NC}"
 else
-    echo -e "${YELLOW}Avertissement : La commande 'clear' n'a pas été trouvée à '/data/data/com.termux/files/usr/bin/clear'. Les permissions n'ont pas été modifiées.${NC}"
+    echo -e "${YELLOW}Avertissement : La commande 'clear' n'a pas été trouvée à '/data/data/com.termux/files/usr/bin/clear' après installation. Les permissions n'ont pas été modifiées.${NC}"
 fi
 echo "" # Nouvelle ligne pour une meilleure mise en forme
 
@@ -164,14 +173,6 @@ if [ ! -f "$REPO_PATH/banner-hashish.txt" ]; then
   echo -e "${RED}Erreur : 'banner-hashish.txt' introuvable dans '$REPO_PATH'.${NC}"
   exit 1
 fi
-if [ ! -f "$REPO_PATH/requirements.txt" ]; then
-  echo -e "${YELLOW}Avertissement : 'requirements.txt' introuvable dans '$REPO_PATH'. Aucune dépendance Python ne sera installée via ce fichier.${NC}"
-fi
-# Nouvelle vérification pour le dossier wordlists au niveau racine du dépôt
-if [ ! -d "$REPO_PATH/wordlists" ]; then
-  echo -e "${YELLOW}Avertissement : Le dossier 'wordlists' est introuvable au niveau racine du dépôt '$REPO_PATH'. Les wordlists par défaut ne seront pas installées.${NC}"
-fi
-# Vérification pour les nouveaux fichiers C++
 if [ ! -f "$REPO_PATH/modules/hash_recon.h" ]; then
   echo -e "${RED}Erreur : 'hash_recon.h' introuvable dans '$REPO_PATH/modules/'. Ce fichier est nécessaire pour la compilation des modules C++.${NC}"
   exit 1
@@ -180,7 +181,11 @@ if [ ! -f "$REPO_PATH/modules/hash_recon.cpp" ]; then
   echo -e "${RED}Erreur : 'hash_recon.cpp' introuvable dans '$REPO_PATH/modules/'. Ce fichier est nécessaire pour la compilation des modules C++.${NC}"
   exit 1
 fi
-
+# Vérification pour hashcracker.cpp
+if [ ! -f "$REPO_PATH/modules/hashcracker.cpp" ]; then
+  echo -e "${RED}Erreur : 'hashcracker.cpp' introuvable dans '$REPO_PATH/modules/'. Ce fichier est nécessaire pour la compilation des modules C++.${NC}"
+  exit 1
+fi
 
 echo -e "${GREEN}Dépôt '$REPO_PATH' validé.${NC}\n"
 
@@ -252,34 +257,12 @@ else
 fi
 
 
-# --- Pré-traitement : Correction des fichiers C++ avant compilation ---
-echo -e "${BLUE}--- Pré-traitement des fichiers C++ ---${NC}" # Ajout de titre de section
-echo -e "${INFO}Correction de la fonction 'reduce_hash' dans les fichiers C++ (si nécessaire)...${NC}"
-
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Seul hashcracker.cpp est concerné par cette correction
-for file in "${CPP_FILES[@]}"; do
-    if [ -f "$file" ]; then
-        echo -e "${INFO}Correction de $file...${NC}"
-        # Vérifie si le motif existe avant d'appliquer la sédation
-        if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
-            sed -i '/std::string reduced_string = "";/{
-                N;N;N;N;N;N;N;N;N;
-                s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
-std::vector<unsigned int> seed_data;\
-for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\
-seed_data.push_back(static_cast<unsigned int>(r_index));\
-\
-std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
-            }' "$file"
-            echo -e "${GREEN}Correction appliquée à $file.${NC}"
-        else
-            echo -e "${INFO}La correction de $file ne semble pas nécessaire (déjà appliquée ou motif non trouvé).${NC}"
-        fi
-    else
-        echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
-    fi
-done
-echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
+# --- Nettoyage du pré-traitement de reduce_hash (obsolète si le code est corrigé) ---
+# Comme mentionné, il est préférable d'avoir le code C++ déjà correct.
+# J'ai retiré cette section car elle modifie le code source, ce qui n'est pas une bonne pratique d'installation.
+# Si tu souhaites toujours la laisser pour une rétrocompatibilité avec des versions antérieures du code source,
+# assure-toi que la sédation est idempotent et ne casse rien si elle est appliquée plusieurs fois.
+# Pour l'instant, je considère que ton code C++ est déjà mis à jour.
 
 
 # --- Compilation et déplacement des modules C++ (hashcracker et hash_recon) ---
@@ -294,6 +277,7 @@ echo -e "${INFO}Vérification et compilation des modules C++ '${HASHCRACKER_CPP_
 if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichiers sources C++ trouvés : ${HASHCRACKER_CPP_SOURCE} et ${HASH_RECON_CPP_SOURCE}.${NC}"
 
+  # Chemins OpenSSL dans Termux
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
@@ -387,7 +371,7 @@ echo -e "${GREEN}Permissions des dossiers définies.${NC}\n"
 echo -e "${BLUE}--- Création du raccourci 'hashish' ---${NC}" # Ajout de titre de section
 echo -e "${INFO}Création du raccourci 'hashish' pour un lancement facile...${NC}"
 cat > "$INSTALL_DIR/hashish" << EOF
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 # Script de lancement pour HASHISH Ethical Toolkit
 
 clear_screen_func() {
@@ -414,12 +398,15 @@ if [ -f "$REPO_PATH/requirements.txt" ]; then
     fi
 
     if command -v pip &> /dev/null; then
+        # Assurer que pip est à jour pour éviter les problèmes de résolution de dépendances
+        echo -e "${INFO}Mise à jour de pip...${NC}"
+        python3 -m pip install --upgrade pip || { echo -e "${YELLOW}Avertissement : Impossible de mettre à jour pip. L'installation des dépendances pourrait échouer.${NC}"; }
+        
         if pip install -r "$REPO_PATH/requirements.txt"; then
             echo -e "${GREEN}Dépendances Python installées avec succès.${NC}\n"
         else
             echo -e "${RED}Erreur: Impossible d'installer les dépendances Python.${NC}"
-            echo -e "${YELLOW}Vérifiez ${REPO_PATH}/requirements.txt, votre connexion Internet, ou essayez 'pip install --upgrade pip'.${NC}"
-            echo -e "${YELLOW}Vous pouvez essayer de les installer manuellement plus tard avec 'pip install -r ${REPO_PATH}/requirements.txt'.${NC}\n"
+            echo -e "${YELLOW}Vérifiez ${REPO_PATH}/requirements.txt, votre connexion Internet, ou essayez de les installer manuellement plus tard avec 'pip install -r ${REPO_PATH}/requirements.txt'.${NC}\n"
         fi
     else
         echo -e "${RED}Erreur: pip n'est pas disponible. Impossible d'installer les dépendances Python.${NC}"
