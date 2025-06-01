@@ -93,7 +93,8 @@ std::string calculate_hash_openssl(const std::string& input, const EVP_MD* diges
 // NOTE : detect_hash_type_str sera toujours utilisée pour déterminer le type de digest OpenSSL.
 // La nouvelle fonction analyzeHash de hash_recon.h sera utilisée pour une analyse plus "humaine"
 // et des suggestions de cassage.
-std::string detect_hash_type_str(const std::string& hash_hex) {
+// Renommée en 'get_hash_algo_name_by_len' pour éviter la confusion avec 'analyzeHash'
+std::string get_hash_algo_name_by_len(const std::string& hash_hex) {
     size_t len = hash_hex.length();
     if (len == 32) return "MD5";
     if (len == 40) return "SHA1";
@@ -699,7 +700,7 @@ int main() {
     OpenSSL_add_all_digests();
 
     while (true) {
-        std::cout << "\033[H\033[J";
+        std::cout << "\033[H\033[J"; // Clear screen
 
         const int terminal_width = 80;
 
@@ -729,17 +730,43 @@ int main() {
             break;
         }
         
+        // --- NOUVELLE INTEGRATION DU MODULE HASH_RECON ---
         // Appeler la fonction analyzeHash du module hash_recon
-        // Cela affichera la suggestion de hachage et les paramètres de cassage
-        analyzeHash(input_hash_hex); 
+        // Stocker le résultat dans une variable de type HashReconResult
+        HashReconResult analysis_results = analyzeHash(input_hash_hex); 
 
-        std::string detected_type_str = detect_hash_type_str(input_hash_hex);
-        const EVP_MD* digest_algo = get_openssl_digest_type(detected_type_str);
+        // Afficher les résultats de l'analyse de manière structurée et claire
+        std::cout << "\n--- " << CR_CYAN << BOLD << "ANALYSE DU HACHAGE" << RESET << " -----------------------------------" << std::endl;
+        std::cout << CR_WHITE << "Type de hachage probable : " << BOLD << analysis_results.probableHashType << RESET << std::endl;
 
-        // Cette ligne est maintenant redondante car analyzeHash fait déjà une analyse
-        // std::cout << CR_DARK_GRAY << "   [ANALYSIS] Hash Type Detected: " << detected_type_str << RESET << std::endl;
+        if (!analysis_results.generalNotes.empty()) {
+            std::cout << "\n" << CR_YELLOW << BOLD << "Notes générales : " << RESET << std::endl;
+            for (const std::string& note : analysis_results.generalNotes) {
+                std::cout << CR_DARK_GRAY << "- " << note << RESET << std::endl;
+            }
+        }
 
-        if (detected_type_str == "INCONNU" || digest_algo == nullptr) {
+        std::cout << "\n" << CR_GREEN << BOLD << "Suggestions de JEUX DE CARACTÈRES pour le cracking : " << RESET << std::endl;
+        for (const std::string& suggestion : analysis_results.charsetSuggestions) {
+            std::cout << CR_WHITE << suggestion << RESET << std::endl;
+        }
+
+        std::cout << "\n" << CR_GREEN << BOLD << "Suggestions de LONGUEURS DE MOT DE PASSE à tester : " << RESET << std::endl;
+        for (const std::string& suggestion : analysis_results.lengthSuggestions) {
+            std::cout << CR_WHITE << suggestion << RESET << std::endl;
+        }
+        std::cout << CR_BLUE << "--------------------------------------------------------" << RESET << std::endl;
+        // --- FIN DE L'INTEGRATION DU MODULE HASH_RECON ---
+
+
+        // Cette ligne est maintenant remplacée par l'affichage de probableHashType de analysis_results
+        // std::string detected_type_str = detect_hash_type_str(input_hash_hex); // Ancien appel
+        // Utiliser la fonction interne pour obtenir le type pour OpenSSL, car analyzeHash ne retourne pas 'MD5' mais 'MD5 (128 bits)'
+        std::string detected_type_str_for_openssl = get_hash_algo_name_by_len(input_hash_hex);
+        const EVP_MD* digest_algo = get_openssl_digest_type(detected_type_str_for_openssl);
+
+
+        if (detected_type_str_for_openssl == "INCONNU" || digest_algo == nullptr) {
             std::cerr << CR_RED << "[ERROR] Unknown or unsupported hash type for cracking. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
             std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
