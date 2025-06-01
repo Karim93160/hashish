@@ -1,4 +1,3 @@
-
 #ifndef HASH_RECON_H
 #define HASH_RECON_H
 
@@ -6,6 +5,16 @@
 #include <vector>
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+
+// Définition d'une structure pour des résultats d'analyse plus détaillés
+// Tu peux choisir d'utiliser cette structure ou de t'en tenir à une simple string
+// si tu ne veux pas de notes ou de suggestions pour le moment.
+struct HashReconResult {
+    std::string probableHashType;
+    std::vector<std::string> generalNotes;
+    std::vector<std::string> charsetSuggestions;
+    std::vector<std::string> lengthSuggestions;
+};
 
 /**
  * @brief Classe pour la reconnaissance des types de hachages.
@@ -29,8 +38,12 @@ public:
      * @param hash La chaîne de caractères représentant le hachage à reconnaître.
      * @return Une chaîne de caractères décrivant le type de hachage reconnu,
      * ou "Inconnu" si le type ne peut pas être déterminé.
+     * (Actuellement, retourne une std::string. Peut être modifiée pour retourner HashReconResult)
      */
     static std::string recognizeHash(const std::string& hash);
+    // Si tu veux retourner la structure complète :
+    // static HashReconResult analyzeHash(const std::string& hash);
+
 
     /**
      * @brief Vérifie si une chaîne est une représentation hexadécimale valide.
@@ -88,4 +101,3 @@ private:
 };
 
 #endif // HASH_RECON_H
-
