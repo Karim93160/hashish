@@ -17,7 +17,7 @@
 </div>
 
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/8ce3d8fac41a5cbeb94f8082d4febd5d688732d1/Screen_Recording_20250531_163158_Termux-ezgif.com-video-to-gif-converter-1.gif)
-[![Version](https://img.shields.io/badge/Version-5.1-red.svg)](https://github.com/Karim93160/hashish)
+[![Version](https://img.shields.io/badge/Version-6.0-bleu.svg)](https://github.com/Karim93160/hashish)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-green.svg?style=flat-square)](https://github.com/YOUR_GITHUB_USERNAME/hashish/commits/main)
 [![Platform](https://img.shields.io/badge/Platform-Termux%20%7C%20Linux-lightgrey.svg?style=flat-square)](https://termux.com/)
@@ -49,10 +49,18 @@ termux-reload-settings
 
 ```
 ---
-**Nous sommes ravis d'annoncer une**
-### *mise à Jour Majeure : Intégration d'un Module de Cracking C++ Optimisé et Attaque par Table Arc-en-Ciel!* 🎉
+**Nous sommes ravis d'annoncer 2 mises à Jour Majeures :** 
 
-Nous sommes ravis d'annoncer une amélioration significative de HASHISH : l'intégration d'un **module de cracking de hachage entièrement réécrit en C++** (`hashcracker.cpp`) et l'introduction d'une **méthode d'attaque par table arc-en-ciel** avec son générateur dédié (`rainbow_generator.cpp`) ! Cette mise à jour apporte des performances accrues et de nouvelles capacités pour vos analyses.
+### **Analyse prédictive des jeux de caractères ! 🧠✨
+Nous sommes ravis de vous présenter une mise à jour majeure pour Hashish ! Votre outil d'analyse de hachages devient encore plus intelligent avec l'ajout d'une analyse prédictive et de recommandations de jeux de caractères. Fini les devinettes, place à la précision ! 🎯
+Désormais, après avoir saisi votre hachage à craquer, Hashish ne se contente plus d'analyser le type de hachage. Il va plus loin en vous offrant des recommandations éclairées sur les types de jeux de caractères à privilégier pour vos tentatives de cassage. 💡
+Comment ça marche ? 🧐
+L'outil analyse en profondeur le hachage que vous avez fourni et identifie les caractéristiques clés (numérique, alphabétique, alphanumérique, hexadécimal). Sur la base de cette analyse, il prédit et affiche en vert 💚 les jeux de caractères les plus pertinents à utiliser pour vos attaques.**
+![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/22d6748221bed40cc76429ad80a535aece2e78e3/Projet_06-02_FullHD1080p_HIGH_FR60-ezgif.com-video-to-gif-converter.gif)
+**Cette nouvelle fonctionnalité vous fera gagner du temps et optimisera vos efforts de cassage ! ⏱️📈**
+
+
+### l'intégration d'un module de *cracking de hachage entièrement réécrit en C++ (`hashcracker.cpp`)* et l'introduction d'une *méthode d'attaque par table arc-en-ciel** avec son générateur dédié (`rainbow_generator.cpp`) ! Cette mise à jour apporte des performances accrues et de nouvelles capacités pour vos analyses.
 
 #### **Qu'est-ce qui change avec `hashcracker.cpp` ?**
 
