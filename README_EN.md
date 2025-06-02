@@ -14,7 +14,7 @@
 </div>
 
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/8ce3d8fac41a5cbeb94f8082d4febd5d688732d1/Screen_Recording_20250531_163158_Termux-ezgif.com-video-to-gif-converter-1.gif)
-[![Version](https://img.shields.io/badge/Version-5.1-red.svg)](https://github.com/Karim93160/wazabi)
+[![Version](https://img.shields.io/badge/Version-6.0-bleu.svg)](https://github.com/Karim93160/wazabi)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-green.svg?style=flat-square)](https://github.com/YOUR_GITHUB_USERNAME/hashish/commits/main)
 [![Platform](https://img.shields.io/badge/Platform-Termux%20%7C%20Linux-lightgrey.svg?style=flat-square)](https://termux.com/)
@@ -46,10 +46,16 @@ termux-reload-settings
 ```
 
 ---
-**We are excited to announce a**
-### *Major Update: Integration of Optimized C++ Cracking Module and Rainbow Table Attack!* 🎉
 
-We are thrilled to announce a significant improvement to HASHISH: the integration of a **completely rewritten hash cracking module in C++** (`hashcracker.cpp`) and the introduction of a **rainbow table attack method** with its dedicated generator (`rainbow_generator.cpp`)! This update brings increased performance and new capabilities for your analyses.
+We are thrilled to announce 2 Major Updates:
+Predictive Character Set Analysis! 🧠✨
+We are excited to introduce a major update for Hashish! Your hash analysis tool is getting even smarter with the addition of predictive analysis and character set recommendations. No more guesswork, just precision! 🎯
+Now, after entering your hash to crack, Hashish no longer just analyzes the hash type. It goes further by offering informed recommendations on which character set types to prioritize for your cracking attempts. 💡
+How does it work? 🧐
+The tool deeply analyzes the hash you provided and identifies key characteristics (numeric, alphabetic, alphanumeric, hexadecimal). Based on this analysis, it predicts and displays in green 💚 the most relevant character sets to use for your attacks.
+![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/22d6748221bed40cc76429ad80a535aece2e78e3/Projet_06-02_FullHD1080p_HIGH_FR60-ezgif.com-video-to-gif-converter.gif)
+This new feature will save you time and optimize your cracking efforts! ⏱️📈
+The integration of a hash cracking module entirely rewritten in C++ (hashcracker.cpp) and the introduction of a rainbow table attack method* with its dedicated generator (rainbow_generator.cpp)! This update brings increased performance and new capabilities for your analyses.
 
 #### **What's New with `hashcracker.cpp`?**
 
