@@ -38,8 +38,17 @@
 #define YELLOW  "\033[33m"      /* Yellow */
 #define BLUE    "\033[34m"      /* Blue */
 #define MAGENTA "\033[35m"      /* Magenta */
-#define CR_WHITE  WHITE BOLD // Renommé pour correspondre à vos conventions
-#define CR_CYAN   CYAN BOLD // Renommé pour correspondre à vos conventions
+#define CYAN    "\033[36m"      /* Cyan */ // <--- AJOUTÉ : Définition manquante de CYAN
+#define WHITE   "\033[37m"      /* White */
+#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+
 #define BOLD    "\033[1m"       /* Bold */
 #define FAINT   "\033[2m"       /* Faint/Dim */
 #define ITALIC  "\033[3m"       /* Italic */
@@ -50,6 +59,8 @@
 #define STRIKETHROUGH "\033[9m" /* Strikethrough */
 
 // Couleurs personnalisées pour l'ambiance Cracker Mood
+#define CR_WHITE  WHITE BOLD // <--- DÉPLACÉ APRÈS LA DÉFINITION DE WHITE ET BOLD
+#define CR_CYAN   CYAN BOLD  // <--- DÉPLACÉ APRÈS LA DÉFINITION DE CYAN ET BOLD
 #define CR_RED    RED BOLD
 #define CR_GREEN  GREEN BOLD
 #define CR_YELLOW YELLOW BOLD
