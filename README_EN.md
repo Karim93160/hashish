@@ -47,8 +47,8 @@ termux-reload-settings
 
 ---
 
-We are thrilled to announce 2 Major Updates:
-Predictive Character Set Analysis! 🧠✨
+#### We are thrilled to announce 2 Major Updates:
+## *Predictive Character Set Analysis!* 🧠✨
 We are excited to introduce a major update for Hashish! Your hash analysis tool is getting even smarter with the addition of predictive analysis and character set recommendations. No more guesswork, just precision! 🎯
 Now, after entering your hash to crack, Hashish no longer just analyzes the hash type. It goes further by offering informed recommendations on which character set types to prioritize for your cracking attempts. 💡
 How does it work? 🧐
