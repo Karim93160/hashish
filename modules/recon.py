@@ -1,19 +1,14 @@
 import os
 import subprocess
 import socket
-import requests # Ajouté pour la fonction GeoIP
+import requests
 from urllib.parse import urlparse
 from termcolor import colored
-import sys # NOUVEL AJOUT : Nécessaire pour sys.platform
+import sys
 
 def which(program):
-    """
-    Vérifie si un programme est exécutable et se trouve dans le PATH.
-    Similaire à la commande 'which' sous Linux/Unix.
-    """
     def is_executable(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
     fpath, fname = os.path.split(program)
     if fpath:
         if is_executable(program):
@@ -26,10 +21,8 @@ def which(program):
     return None
 
 def perform_whois_lookup(target_domain):
-    """Effectue une recherche WHOIS pour un nom de domaine."""
     print(colored(f"[RECON] Recherche WHOIS complète pour {target_domain}...", 'cyan'))
     try:
-        # Ajout de timeout pour éviter que la commande ne bloque indéfiniment
         whois_info = subprocess.run(['whois', target_domain], capture_output=True, text=True, check=True, timeout=30)
         if whois_info.stdout:
             print(whois_info.stdout)
@@ -45,7 +38,6 @@ def perform_whois_lookup(target_domain):
         print(colored(f"[ERREUR] Une erreur inattendue est survenue lors de la recherche WHOIS: {e}", 'red'))
 
 def perform_geoip_lookup(ip_address):
-    """Recherche les informations GeoIP pour une adresse IP via une API publique."""
     print(colored(f"[RECON] Recherche GeoIP pour {ip_address}...", 'cyan'))
     api_url = f"http://ip-api.com/json/{ip_address}?fields=status,message,country,city,regionName,zip,lat,lon,isp,org,as,query"
     try:
@@ -72,13 +64,9 @@ def perform_geoip_lookup(ip_address):
         print(colored(f"[ERREUR] Erreur lors de la recherche GeoIP: {e}", 'red'))
 
 def perform_recon_hardcore(target):
-    """Lance une reconnaissance avancée sur la cible."""
     print(colored(f"[RECON HARDCORE] Démarrage de la reconnaissance avancée sur {target}...", 'yellow', attrs=['bold']))
-
     domain = ""
     ip_address = None
-
-    # Extraction du nom de domaine
     parsed_url = urlparse(target)
     if parsed_url.netloc:
         domain = parsed_url.netloc
@@ -86,21 +74,16 @@ def perform_recon_hardcore(target):
     else:
         domain = target
         print(colored(f"[RECON] Cible considérée comme un nom de domaine/IP : {domain}", 'cyan'))
-
-    # Recherche DNS
     print(colored(f"[RECON] Recherche DNS pour {domain}...", 'cyan'))
     try:
         ip_address = socket.gethostbyname(domain)
         print(colored(f"[RECON] Adresse IP de {domain}: {ip_address}", 'cyan'))
     except socket.gaierror:
         print(colored(f"[ERREUR] Impossible de résoudre l'adresse pour {domain}.", 'red'))
-        return # Si on ne peut pas résoudre l'IP, beaucoup de fonctions ne fonctionneront pas
-
-    # Recherche DNS détaillée (nslookup)
+        return
     if domain:
         print(colored(f"[RECON] Recherche DNS détaillée (nslookup) pour {domain}...", 'cyan'))
         try:
-            # Utilise 'nslookup -type=any' pour obtenir plus d'informations
             nslookup_info = subprocess.run(['nslookup', '-type=any', domain], capture_output=True, text=True, check=True, timeout=20)
             print(nslookup_info.stdout)
         except subprocess.CalledProcessError as e:
@@ -111,27 +94,20 @@ def perform_recon_hardcore(target):
             print(colored(f"[ERREUR] La commande 'nslookup' a expiré pour {domain}.", 'red'))
         except Exception as e:
             print(colored(f"[ERREUR] Une erreur inattendue est survenue lors de nslookup: {e}", 'red'))
-
-    # Recherche WHOIS
     if domain:
         perform_whois_lookup(domain)
-
-    # Traceroute
-    # Vérifie si 'traceroute' (Linux) ou 'tracert' (Windows) est disponible
     traceroute_cmd = None
-    if sys.platform.startswith('linux') or sys.platform == 'darwin': # Linux ou macOS
+    if sys.platform.startswith('linux') or sys.platform == 'darwin':
         if which("traceroute"):
             traceroute_cmd = ['traceroute', '-I', '-n', '-w', '1']
-        elif which("tracepath"): # Alternative Linux
+        elif which("tracepath"):
             traceroute_cmd = ['tracepath']
-    elif sys.platform == 'win32': # Windows
+    elif sys.platform == 'win32':
         if which("tracert"):
             traceroute_cmd = ['tracert']
-    
     if ip_address and traceroute_cmd:
         print(colored(f"[RECON] Traceroute avancé vers {ip_address}...", 'cyan'))
         try:
-            # Ajoute l'IP à la commande
             full_command = traceroute_cmd + [ip_address]
             traceroute_info = subprocess.run(full_command, capture_output=True, text=True, check=True, timeout=60)
             print(traceroute_info.stdout)
@@ -147,12 +123,9 @@ def perform_recon_hardcore(target):
         print(colored("[WARNING] Aucune commande de traceroute (traceroute/tracepath/tracert) n'est installée ou trouvée dans le PATH.", 'yellow'))
     else:
         print(colored("[INFO] Impossible de lancer traceroute car l'IP n'a pas été résolue.", 'yellow'))
-
-    # Scan de ports (TCP connect scan)
     if ip_address and which("nmap"):
         print(colored(f"[RECON] Scan de ports TCP connect sur {ip_address} (top 100)...", 'cyan'))
         try:
-            # Ajout de -sV pour la détection de version et un timeout plus long
             nmap_info = subprocess.run(['nmap', '-sT', '-sV', '-T4', '--top-ports', '100', ip_address], capture_output=True, text=True, check=True, timeout=120)
             print(nmap_info.stdout)
         except subprocess.CalledProcessError as e:
@@ -167,17 +140,13 @@ def perform_recon_hardcore(target):
         print(colored("[WARNING] La commande 'nmap' n'est pas installée. Le scan de ports est ignoré.", 'yellow'))
     else:
         print(colored("[INFO] Impossible de lancer le scan de ports car l'IP n'a pas été résolue.", 'yellow'))
-
-    # Recherche GeoIP
     if ip_address:
         perform_geoip_lookup(ip_address)
     else:
         print(colored("[INFO] Impossible d'effectuer la recherche GeoIP car l'IP n'a pas été résolue.", 'yellow'))
-
     print(colored(f"[RECON HARDCORE] Reconnaissance avancée sur {target} terminée.", 'green', attrs=['bold']))
 
 def perform_recon_hardcore_main():
-    """Fonction principale pour l'exécution du module Reconnaissance."""
     print(colored("\n[MODULE] Lancement du module Reconnaissance (HARDCORE)", 'yellow', attrs=['bold']))
     target_url = input(colored(" [ENTREZ L'IP OU L'URL CIBLE POUR LA RECONNAISSANCE] > ", 'light_green')).strip()
     if not target_url:
