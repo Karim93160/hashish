@@ -734,7 +734,12 @@ int main() {
         // The problematic line was here:
         // analyserTypeCaracteresHachage(input_hash_hex); // <-- NOUVEL APPEL ICI
         // It has been changed to:
-            analyzeHashCharacterType(input_hash_hex);
+            // Ancien :
+// analyzeHashCharacterType(input_hash_hex);
+
+// Nouveau :
+            analyserTypeCaracteresHachage(input_hash_hex); // <-- MODIFIE CETTE LIGNE
+
 
 
         if (detected_type_str == "INCONNU" || digest_algo == nullptr) {
