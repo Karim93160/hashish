@@ -52,42 +52,73 @@ bool estHexadecimal(const std::string& str) {
     return true;
 }
 
+// Ancienne fonction : analyse un HASH (qui est toujours hexadécimal)
 void analyserTypeCaracteresHachage(const std::string& hash_hex) {
-    std::cout << "\n" << CR_BLUE << "--- [IN-DEPTH HASH ANALYSIS] -------------------" << RESET << std::endl;
-    std::cout << CR_DARK_GRAY << "    Hash to analyze: " << hash_hex << RESET << std::endl;
+    std::cout << "\n" << CR_BLUE << "--- [ANALYSE DU HASH (OUTPUT)] -------------------" << RESET << std::endl;
+    std::cout << CR_DARK_GRAY << "    Hash a analyser: " << hash_hex << RESET << std::endl;
     bool est_numerique = estNumerique(hash_hex);
     bool est_alphabetique = estAlphabetique(hash_hex);
     bool est_alphanumerique = estAlphanumerique(hash_hex);
     bool est_hexadecimal = estHexadecimal(hash_hex);
 
-    std::cout << CR_CYAN << "    HASH analysis results:" << RESET << std::endl;
-    std::cout << CR_CYAN << "      - Only numeric (0-9): " << (est_numerique ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
-    std::cout << CR_CYAN << "      - Only alphabetic (a-z, A-Z): " << (est_alphabetique ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
+    std::cout << CR_CYAN << "    Resultats de l'analyse du hash:" << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Uniquement numerique (0-9): " << (est_numerique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Uniquement alphabetique (a-z, A-Z): " << (est_alphabetique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
     if (est_alphanumerique) {
-        std::cout << CR_GREEN << BOLD << "      - Only alphanumeric (letters or digits): YES, contains [a-z] and [0-9]!" << RESET << std::endl;
+        // C'est normal pour un hash MD5/SHA. Il contient des chiffres et des lettres (a-f).
+        std::cout << CR_GREEN << BOLD << "      - Uniquement alphanumerique (lettres ou chiffres): OUI (contient 0-9 et a-f)" << RESET << std::endl;
     } else {
-        std::cout << CR_CYAN << "      - Only alphanumeric (letters or digits): " << CR_RED << "NO" << RESET << std::endl;
+        std::cout << CR_CYAN << "      - Uniquement alphanumerique (lettres ou chiffres): " << CR_RED << "NON" << RESET << std::endl;
     }
-    std::cout << CR_CYAN << "      - Only hexadecimal (0-9, a-f, A-F): " << (est_hexadecimal ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Uniquement hexadecimal (0-9, a-f, A-F): " << (est_hexadecimal ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
 
     if (est_hexadecimal) {
-        std::cout << CR_YELLOW << "    [INFO] A hexadecimal hash is very common for MD5, SHA-1, SHA-256, etc." << RESET << std::endl;
+        std::cout << CR_YELLOW << "    [INFO] Un hash hexadecimal est tres courant pour MD5, SHA-1, SHA-256, etc." << RESET << std::endl;
     } else {
-        std::cout << CR_YELLOW << "    [INFO] This hash does NOT appear to be purely hexadecimal. It could be a different encoding or corrupted." << RESET << std::endl;
+        std::cout << CR_YELLOW << "    [INFO] Ce hash ne semble PAS etre purement hexadecimal. Il pourrait etre encode differemment ou corrompu." << RESET << std::endl;
     }
 
     if (est_alphanumerique) {
-        std::cout << "\n" << CR_GREEN << BOLD << "    [RECOMMENDATION] For brute-force attacks, consider an alphanumeric character set." << RESET << std::endl;
+        std::cout << "\n" << CR_GREEN << BOLD << "    [RECOMMANDATION] Pour le cracking, considere un jeu de caracteres alphanumerique." << RESET << std::endl;
     } else if (est_numerique) {
-        std::cout << "\n" << CR_YELLOW << "    [RECOMMENDATION] For brute-force attacks, a numeric character set might be appropriate." << RESET << std::endl;
+        std::cout << "\n" << CR_YELLOW << "    [RECOMMANDATION] Pour le cracking, un jeu de caracteres numerique pourrait etre approprie." << RESET << std::endl;
     } else if (est_alphabetique) {
-        std::cout << "\n" << CR_YELLOW << "    [RECOMMENDATION] For brute-force attacks, an alphabetic character set might be appropriate." << RESET << std::endl;
+        std::cout << "\n" << CR_YELLOW << "    [RECOMMANDATION] Pour le cracking, un jeu de caracteres alphabetique pourrait etre approprie." << RESET << std::endl;
     }
 
     if (!est_numerique && !est_alphabetique && !est_hexadecimal && !est_alphanumerique) {
-        std::cout << CR_YELLOW << "    [INFO] This hash contains special or unexpected characters. It might be differently encoded or corrupted." << RESET << std::endl;
+        std::cout << CR_YELLOW << "    [INFO] Ce hash contient des caracteres speciaux ou inattendus. Il pourrait etre encode differemment ou corrompu." << RESET << std::endl;
     }
     std::cout << CR_BLUE << "--------------------------------------------------------" << RESET << std::endl;
+}
+
+// NOUVELLE FONCTION : Analyse un mot de passe en clair
+void analyserTypeCaracteresMotDePasseClair(const std::string& password_clair) {
+    std::cout << "\n" << CR_MAGENTA << "--- [ANALYSE DU MOT DE PASSE ORIGINAL] ---------------" << RESET << std::endl;
+    std::cout << CR_DARK_GRAY << "    Mot de passe a analyser: " << password_clair << RESET << std::endl;
+
+    bool est_numerique = estNumerique(password_clair);
+    bool est_alphabetique = estAlphabetique(password_clair);
+    bool est_alphanumerique = estAlphanumerique(password_clair);
+    bool contient_special = !estAlphanumerique(password_clair); // Si ce n'est pas alphanumérique, ça contient spécial
+
+    std::cout << CR_CYAN << "    Resultats de l'analyse du mot de passe:" << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Uniquement numerique (0-9): " << (est_numerique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Uniquement alphabetique (a-z, A-Z): " << (est_alphabetique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Uniquement alphanumerique (lettres ou chiffres): " << (est_alphanumerique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Contient des caracteres speciaux: " << (contient_special ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+
+    // Recommandations basées sur l'analyse du mot de passe clair
+    if (est_numerique) {
+        std::cout << "\n" << CR_GREEN << BOLD << "    [RECOMMANDATION] Le mot de passe est uniquement numerique. Le cracking par dictionnaire numerique ou brute-force simple pourrait reussir." << RESET << std::endl;
+    } else if (est_alphabetique) {
+        std::cout << "\n" << CR_GREEN << BOLD << "    [RECOMMANDATION] Le mot de passe est uniquement alphabetique. Considere un dictionnaire ou un jeu de caracteres alphabetique." << RESET << std::endl;
+    } else if (est_alphanumerique) {
+        std::cout << "\n" << CR_YELLOW << BOLD << "    [RECOMMANDATION] Le mot de passe est alphanumerique. Un jeu de caracteres alphanumerique est un bon point de depart pour le brute-force." << RESET << std::endl;
+    } else if (contient_special) {
+        std::cout << "\n" << CR_RED << BOLD << "    [RECOMMANDATION] Le mot de passe contient des caracteres speciaux. Le brute-force sera plus complexe, necessitant un large jeu de caracteres." << RESET << std::endl;
+    }
+    std::cout << CR_MAGENTA << "--------------------------------------------------------" << RESET << std::endl;
 }
 
 // =======================================================
@@ -274,37 +305,45 @@ bool next_permutation_chars(std::string& s, const std::string& charset) {
 }
 
 void crackerEtAnalyserMotDePasse(const std::string& hash_cible, const std::string& type_hash, int max_longueur) {
-    std::cout << "\n" << CR_MAGENTA << "--- [PASSWORD CRACKING & ANALYSIS] -------------------" << RESET << std::endl;
-    std::cout << CR_DARK_GRAY << "    Target Hash: " << hash_cible << RESET << std::endl;
-    std::cout << CR_DARK_GRAY << "    Hash Algorithm: " << type_hash << RESET << std::endl;
-    std::cout << CR_DARK_GRAY << "    Max Password Length: " << max_longueur << RESET << std::endl;
+    std::cout << "\n" << CR_MAGENTA << "--- [CRACKING DU MOT DE PASSE] -------------------" << RESET << std::endl;
+    std::cout << CR_DARK_GRAY << "    Hash cible: " << hash_cible << RESET << std::endl;
+    std::cout << CR_DARK_GRAY << "    Algorithme de hachage: " << type_hash << RESET << std::endl;
+    std::cout << CR_DARK_GRAY << "    Longueur max du mot de passe: " << max_longueur << RESET << std::endl;
 
     std::string numeric_charset = "0123456789";
     std::string lower_alpha_charset = "abcdefghijklmnopqrstuvwxyz";
     std::string upper_alpha_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     std::string alpha_charset = lower_alpha_charset + upper_alpha_charset;
     std::string alphanumeric_charset = numeric_charset + alpha_charset;
+    std::string special_chars = "!@#$%^&*()-_+=[]{}|;:,.<>?/~`"; // Ajout de caractères spéciaux
+    std::string full_charset = alphanumeric_charset + special_chars;
+
 
     std::vector<std::pair<std::string, std::string>> charsets_to_try;
-    charsets_to_try.push_back({"Numeric (0-9)", numeric_charset});
-    charsets_to_try.push_back({"Alphabetic (a-Z)", alpha_charset});
-    charsets_to_try.push_back({"Alphanumeric (a-Z, 0-9)", alphanumeric_charset}); // <-- Ligne corrigée
-    // Tu peux ajouter d'autres jeux de caractères ici (ex: avec caractères spéciaux)
+    charsets_to_try.push_back({"Numerique (0-9)", numeric_charset});
+    charsets_to_try.push_back({"Alphabetique (a-Z)", alpha_charset});
+    charsets_to_try.push_back({"Alphanumerique (a-Z, 0-9)", alphanumeric_charset});
+    charsets_to_try.push_back({"Complet (Alphanumerique + Speciaux)", full_charset}); // Ajout du jeu de caractères complet
 
     std::string mot_de_passe_trouve = "";
-    std::string type_mdp_trouve = "Not Found";
+    std::string type_mdp_trouve = "Non Trouve";
     bool found = false;
 
     for (const auto& charset_entry : charsets_to_try) {
         if (found) break; // Arrêter si le mot de passe est déjà trouvé
 
-        std::cout << CR_CYAN << "\n    Attempting with character set: " << charset_entry.first << RESET << std::endl;
+        std::cout << CR_CYAN << "\n    Tentative avec le jeu de caracteres: " << charset_entry.first << RESET << std::endl;
         const std::string& current_charset = charset_entry.second;
 
         for (int len = 1; len <= max_longueur; ++len) {
             if (found) break; // Arrêter si le mot de passe est déjà trouvé
-            std::cout << CR_DARK_GRAY << "      Trying length: " << len << RESET << std::endl;
+            std::cout << CR_DARK_GRAY << "      Essai de longueur: " << len << RESET << std::endl;
 
+            if (current_charset.empty()) { // Vérifier si le charset est vide
+                std::cerr << CR_RED << "Erreur: Jeu de caracteres vide, impossible de generer des mots de passe." << RESET << std::endl;
+                break;
+            }
+            
             std::string current_password(len, current_charset[0]); // Commence avec la première combinaison
 
             // Boucle de génération et de test de mots de passe
@@ -319,7 +358,7 @@ void crackerEtAnalyserMotDePasse(const std::string& hash_cible, const std::strin
                 }
                 // else if (type_hash == "SHA1") { ... } // Ajouter d'autres algorithmes ici
                 else {
-                    std::cerr << CR_RED << "Error: Unsupported hash algorithm '" << type_hash << "'" << RESET << std::endl;
+                    std::cerr << CR_RED << "Erreur: Algorithme de hachage non supporte '" << type_hash << "'" << RESET << std::endl;
                     return;
                 }
 
@@ -336,19 +375,16 @@ void crackerEtAnalyserMotDePasse(const std::string& hash_cible, const std::strin
         }
     }
 
-    std::cout << "\n" << CR_YELLOW << "--- [CRACKING RESULTS] -------------------------" << RESET << std::endl;
+    std::cout << "\n" << CR_YELLOW << "--- [RESULTATS DU CRACKING] -------------------------" << RESET << std::endl;
     if (found) {
-        std::cout << CR_GREEN << BOLD << "    SUCCESS! Password Found: " << mot_de_passe_trouve << RESET << std::endl;
-        std::cout << CR_GREEN << BOLD << "    Original Password Type: " << type_mdp_trouve << RESET << std::endl;
+        std::cout << CR_GREEN << BOLD << "    SUCCES ! Mot de passe trouve: " << mot_de_passe_trouve << RESET << std::endl;
+        std::cout << CR_GREEN << BOLD << "    Type de mot de passe original (estime): " << type_mdp_trouve << RESET << std::endl;
 
-        // Utilise tes fonctions existantes pour une analyse plus fine du mot de passe retrouvé
-        std::cout << "\n" << CR_CYAN << "    Detailed analysis of found password (" << mot_de_passe_trouve << "):" << RESET << std::endl;
-        std::cout << CR_CYAN << "      - Only numeric (0-9): " << (estNumerique(mot_de_passe_trouve) ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
-        std::cout << CR_CYAN << "      - Only alphabetic (a-z, A-Z): " << (estAlphabetique(mot_de_passe_trouve) ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
-        std::cout << CR_CYAN << "      - Only alphanumeric (letters or digits): " << (estAlphanumerique(mot_de_passe_trouve) ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
+        // Utilise la nouvelle fonction pour une analyse plus fine du mot de passe retrouvé
+        analyserTypeCaracteresMotDePasseClair(mot_de_passe_trouve);
 
     } else {
-        std::cout << CR_RED << BOLD << "    Password Not Found within the specified parameters (length/character sets)." << RESET << std::endl;
+        std::cout << CR_RED << BOLD << "    Mot de passe non trouve avec les parametres specifies (longueur/jeux de caracteres)." << RESET << std::endl;
     }
     std::cout << CR_MAGENTA << "--------------------------------------------------------" << RESET << std::endl;
 }
