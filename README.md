@@ -49,7 +49,7 @@ termux-reload-settings
 
 ```
 ---
-**Nous sommes ravis d'annoncer 2 mises à Jour Majeures :** 
+#### **Nous sommes ravis d'annoncer 2 mises à Jour Majeures :** 
 
 ### **Analyse prédictive des jeux de caractères ! 🧠✨
 Nous sommes ravis de vous présenter une mise à jour majeure pour Hashish ! Votre outil d'analyse de hachages devient encore plus intelligent avec l'ajout d'une analyse prédictive et de recommandations de jeux de caractères. Fini les devinettes, place à la précision ! 🎯
