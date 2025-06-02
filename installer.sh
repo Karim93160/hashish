@@ -35,7 +35,6 @@ DEFAULT_REPO_PATH="$DEFAULT_HOME_PATH/$REPO_NAME"
 CURRENT_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 REPO_PATH=""
 
-# Cette boucle remonte les répertoires pour trouver la racine du dépôt 'hashish'
 temp_dir="$CURRENT_SCRIPT_DIR"
 while [[ "$temp_dir" != "/" && "$temp_dir" != "" ]]; do
     if [[ "$(basename "$temp_dir")" == "$REPO_NAME" ]]; then
@@ -162,19 +161,15 @@ chmod +r "$INSTALL_DIR/banner-hashish.txt"
 echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 
 echo -e "${BLUE}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MODULES_TARGET_DIR/'...${NC}"
-# Utilise rsync pour une copie plus efficace et pour exclure les fichiers C++
 if command -v rsync &> /dev/null; then
     echo -e "${INFO}Utilisation de rsync pour copier les modules Python...${NC}"
     rsync -av --exclude 'wordlists/' --exclude '*.cpp' --exclude '*.h' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
     echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement (fallback)...${NC}"
-    # Copie les fichiers .py directement
     find "$REPO_PATH/modules/" -maxdepth 1 -name "*.py" -exec cp {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true
-    # Copie les sous-répertoires, en excluant les fichiers C++ si possible
     for dir in "$REPO_PATH/modules"/*/; do
         dir_name=$(basename "$dir")
         if [ "$dir_name" != "wordlists" ]; then
-            # Utilise find avec prune pour éviter de descendre dans les dossiers non souhaités
             find "$dir" -type f ! -name "*.cpp" ! -name "*.h" -exec cp --parents {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true
         fi
     done
@@ -190,37 +185,30 @@ else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
 fi
 
-# --- DÉBUT DE LA SECTION MODIFIÉE POUR LA COMPILATION C++ ---
+# --- SECTION DE COMPILATION C++ ---
 
-# Définition des chemins des fichiers C++
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
 HASH_RECON_CPP_SOURCE="$REPO_PATH/modules/hash_recon.cpp"
-HASH_RECON_H_SOURCE="$REPO_PATH/modules/hash_recon.h" # Ajout du .h pour la copie
+HASH_RECON_H_SOURCE="$REPO_PATH/modules/hash_recon.h" 
 
 HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
 
 echo -e "${BLUE}Vérification et compilation des modules C++ 'hashcracker.cpp' et 'hash_recon.cpp' et leurs en-têtes...${NC}"
 
-# Vérifier la présence des fichiers sources et de l'en-tête
 if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ] && [ -f "$HASH_RECON_H_SOURCE" ]; then
   echo -e "${INFO}Fichiers sources C++ 'hashcracker.cpp', 'hash_recon.cpp' et 'hash_recon.h' trouvés.${NC}"
 
-  # Copier hash_recon.h et hash_recon.cpp dans le dossier des modules cibles
-  # Cela garantit que hashcracker.cpp peut les trouver lors de la compilation
   echo -e "${INFO}Copie de hash_recon.h, hash_recon.cpp et hashcracker.cpp vers $MODULES_TARGET_DIR pour la compilation...${NC}"
   cp "$HASH_RECON_H_SOURCE" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur: Impossible de copier hash_recon.h. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
   cp "$HASH_RECON_CPP_SOURCE" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur: Impossible de copier hash_recon.cpp. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
   cp "$HASHCRACKER_CPP_SOURCE" "$MODULES_TARGET_DIR/" || { echo -e "${RED}Erreur: Impossible de copier hashcracker.cpp. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
 
-  # Chemins des includes et libs OpenSSL pour Termux
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
   echo -e "${CYAN}Lancement de la compilation de hashcracker.cpp et hash_recon.cpp en 'hashcracker'...${NC}"
   echo -e "${CYAN}Commande : g++ \"$MODULES_TARGET_DIR/hashcracker.cpp\" \"$MODULES_TARGET_DIR/hash_recon.cpp\" -o \"$HASHCRACKER_FINAL_EXECUTABLE\" -lcrypto -lssl -std=c++17 -fopenmp -pthread -I\"$MODULES_TARGET_DIR\" -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\"${NC}"
 
-  # Exécution de la commande de compilation avec les flags et chemins corrects
-  # La commande g++ est ici une seule ligne pour une meilleure exécution et gestion des erreurs
   if g++ "$MODULES_TARGET_DIR/hashcracker.cpp" \
          "$MODULES_TARGET_DIR/hash_recon.cpp" \
          -o "$HASHCRACKER_FINAL_EXECUTABLE" \
@@ -252,14 +240,10 @@ else
   echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
 fi
 
-# --- FIN DE LA SECTION MODIFIÉE POUR LA COMPILATION C++ ---
+# --- FIN DE LA SECTION DE COMPILATION C++ ---
 
 echo ""
 
-# Ancienne logique pour rainbow_generator, qui est probablement remplacée ou intégrée.
-# Je l'ai laissée telle quelle si tu en as toujours besoin pour un autre exécutable,
-# mais si hashcracker.cpp gère maintenant la génération des tables, cette section
-# pourrait être inutile ou à adapter.
 RAINBOW_GENERATOR_OLD_EXECUTABLE="$MODULES_TARGET_DIR/rainbow_generator"
 if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
     echo -e "${BLUE}Nettoyage de l'ancien exécutable rainbow_generator...${NC}"
@@ -301,7 +285,7 @@ if [ -f "$REPO_PATH/requirements.txt" ]; then
     if ! command -v pip &> /dev/null; then
         echo -e "${YELLOW}pip n'est pas trouvé. Tentative d'installation de 'python-pip'...${NC}"
         install_package "python-pip" || { echo -e "${RED}Impossible d'installer pip. Veuillez l'installer manuellement (pkg install python-pip).${NC}"; }
-    fi
+    end
     if command -v pip &> /dev/null; then
         if pip install -r "$REPO_PATH/requirements.txt"; then
             echo -e "${GREEN}Dépendances Python installées avec succès.${NC}\n"
@@ -333,4 +317,3 @@ fi
 
 echo -e "${CYAN}Merci d'avoir installé HASHISH. Bon travail !${NC}\n"
 exit 0
-
