@@ -50,6 +50,8 @@ std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     return ss.str();
 }
 
+// Comme pour hashcracker.cpp, cette fonction s'appuie sur les optimisations
+// d'OpenSSL, qui utilise déjà des implémentations assembleur/intrinsics.
 std::string calculate_hash_openssl(const std::string& input, const EVP_MD* digest_type) {
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     if (mdctx == nullptr) {
@@ -91,6 +93,9 @@ std::string reduce_hash(const std::string& hash, size_t target_len, const std::s
         return "";
     }
     std::string reduced_string = "";
+    // Seed basé sur le hash et l'index de réduction pour la reproductibilité.
+    // L'utilisation de std::seed_seq avec des entiers provenant du hash
+    // assure une meilleure distribution du seed.
     std::vector<unsigned int> seed_data;
     for (char c : hash) {
         seed_data.push_back(static_cast<unsigned int>(c));
@@ -143,8 +148,9 @@ void generate_rainbow_table(
         std::cerr << CR_RED << "[ERROR] Failed to open output file: " << output_file << " (" << strerror(errno) << ")" << RESET << std::endl;
         return;
     }
-    std::random_device rd;
-    std::mt19937 generator(rd());
+    // Utilisation de std::chrono::system_clock::now().time_since_epoch().count()
+    // pour un seed plus robuste sur toutes les plateformes.
+    std::mt19937 generator(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_int_distribution<> charset_dist(0, charset.length() - 1);
     std::uniform_int_distribution<> len_dist(min_len, max_len);
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -161,7 +167,7 @@ void generate_rainbow_table(
             current_hash = calculate_hash_openssl(current_word, digest_type);
             if (current_hash.empty()) {
                 std::cerr << CR_RED << "[ERROR] Hash calculation failed for word: " << current_word << ". Skipping chain." << RESET << std::endl;
-                start_word = "";
+                start_word = ""; // Marquer comme chaîne à ignorer
                 break;
             }
             if (j == chain_length - 1) {
@@ -170,11 +176,11 @@ void generate_rainbow_table(
             current_word = reduce_hash(current_hash, current_len, charset, j);
             if (current_word.empty()) {
                 std::cerr << CR_RED << "[ERROR] Reduction failed for hash: " << current_hash << ". Skipping chain." << RESET << std::endl;
-                start_word = "";
+                start_word = ""; // Marquer comme chaîne à ignorer
                 break;
             }
         }
-        if (!start_word.empty()) {
+        if (!start_word.empty()) { // Seulement écrire si la chaîne n'a pas été ignorée
             outfile << start_word << ":" << current_hash << "\n";
             generated_chains++;
         }
@@ -191,6 +197,10 @@ void generate_rainbow_table(
 }
 
 int main() {
+    // Initialiser OpenSSL
+    ERR_load_crypto_strings();
+    OpenSSL_add_all_digests(); // Initialiser toutes les fonctions de hachage disponibles
+
     std::cout << "\033[H\033[J";
     std::cout << CR_RED BOLD << "   H A S H C R A C K E R - R A I N B O W G E N " << RESET << std::endl;
     std::cout << CR_CYAN << "   ------------------------------------------- " << RESET << std::endl;
@@ -231,18 +241,30 @@ int main() {
                 std::cout << CR_DARK_GRAY << "   Selected Charset: " << predefined_charsets[choice_num].first << RESET << std::endl;
             } else {
                 std::cerr << CR_RED << "[ERROR] Invalid charset choice. Using empty charset. Please restart." << RESET << std::endl;
+                // Libérer les ressources OpenSSL avant de quitter
+                EVP_cleanup();
+                ERR_free_strings();
                 return 1;
             }
         } catch (const std::invalid_argument& e) {
             std::cerr << CR_RED << "[ERROR] Invalid input for charset choice. Using empty charset. Please restart." << RESET << std::endl;
+            // Libérer les ressources OpenSSL avant de quitter
+            EVP_cleanup();
+            ERR_free_strings();
             return 1;
         } catch (const std::out_of_range& e) {
             std::cerr << CR_RED << "[ERROR] Charset choice out of range. Using empty charset. Please restart." << RESET << std::endl;
+            // Libérer les ressources OpenSSL avant de quitter
+            EVP_cleanup();
+            ERR_free_strings();
             return 1;
         }
     }
     if (charset_input.empty()) {
         std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot generate rainbow table. Please restart." << RESET << std::endl;
+        // Libérer les ressources OpenSSL avant de quitter
+        EVP_cleanup();
+        ERR_free_strings();
         return 1;
     }
     int min_len, max_len;
@@ -319,6 +341,9 @@ int main() {
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     if (tolower(confirm_choice) != 'y') {
         std::cout << CR_YELLOW << "[INFO] Rainbow table generation cancelled by user." << RESET << std::endl;
+        // Libérer les ressources OpenSSL avant de quitter
+        EVP_cleanup();
+        ERR_free_strings();
         return 0;
     }
     generate_rainbow_table(output_filename, digest_algo, charset_input, min_len, max_len, num_chains, chain_length);
@@ -326,5 +351,10 @@ int main() {
     std::cout << CR_CYAN << "  [MODULE COMPLETE] Rainbow Table Generation finished. " << RESET << std::endl;
     std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // Libérer les ressources OpenSSL
+    EVP_cleanup();
+    ERR_free_strings();
+
     return 0;
 }
