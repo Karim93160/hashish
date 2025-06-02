@@ -191,29 +191,27 @@ else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
 fi
 
-# --- DÉBUT DE LA SECTION CORRIGÉE POUR LE PRÉ-TRAITEMENT C++ ---
-echo -e "${BLUE}Pré-traitement : Correction de la syntaxe C++ dans 'hashcracker.cpp'...${NC}"
+# --- SECTION CRUCIALE : PRÉ-TRAITEMENT C++ POUR L'HARMONISATION DU NOM DE FONCTION ---
+echo -e "${BLUE}Pré-traitement : Harmonisation de la syntaxe C++ dans 'hashcracker.cpp'...${NC}"
 HASHCRACKER_CPP_FILE="$REPO_PATH/modules/hashcracker.cpp"
 
 if [ -f "$HASHCRACKER_CPP_FILE" ]; then
-    echo -e "${INFO}Correction de $HASHCRACKER_CPP_FILE (suppression des astérisques à la ligne 737)...${NC}"
-    # Utilise sed pour remplacer la ligne spécifique. 
-    # Assurez-vous que le motif de recherche est exact pour éviter les remplacements accidentels.
-    # Le pattern original `**analyzeHashCharacterType(input_hash_hex);**` avec échappement des caractères spéciaux
-    # La ligne remplacée sera `analyzeHashCharacterType(input_hash_hex);`
-    sed -i 's/\*\*analyzeHashCharacterType(input_hash_hex);/\t\tanalyzeHashCharacterType(input_hash_hex);/' "$HASHCRACKER_CPP_FILE"
+    echo -e "${INFO}Mise à jour de $HASHCRACKER_CPP_FILE (remplacement de l'appel de fonction 'analyzeHashCharacterType' par 'analyserTypeCaracteresHachage')...${NC}"
+    # Commande sed pour remplacer l'ancien nom de fonction par le nouveau nom français.
+    # On remplace 'analyzeHashCharacterType(' par 'analyserTypeCaracteresHachage('
+    sed -i 's/analyzeHashCharacterType(/analyserTypeCaracteresHachage(/g' "$HASHCRACKER_CPP_FILE"
     
     # Vérifie si la modification a été appliquée
-    if grep -q "analyzeHashCharacterType(input_hash_hex);" "$HASHCRACKER_CPP_FILE"; then
-        echo -e "${GREEN}Correction appliquée à $HASHCRACKER_CPP_FILE.${NC}"
+    if grep -q "analyserTypeCaracteresHachage(input_hash_hex);" "$HASHCRACKER_CPP_FILE"; then
+        echo -e "${GREEN}Correction du nom de fonction appliquée à $HASHCRACKER_CPP_FILE.${NC}"
     else
-        echo -e "${YELLOW}Avertissement : La correction de la ligne 737 dans $HASHCRACKER_CPP_FILE n'a pas pu être vérifiée. Le motif n'a peut-être pas été trouvé ou était déjà corrigé.${NC}"
+        echo -e "${YELLOW}Avertissement : La correction du nom de fonction dans $HASHCRACKER_CPP_FILE n'a pas pu être vérifiée. Le motif n'a peut-être pas été trouvé (car déjà corrigé) ou une erreur est survenue.${NC}"
     fi
 else
     echo -e "${YELLOW}Avertissement : Fichier C++ 'hashcracker.cpp' non trouvé pour la correction. ${NC}"
 fi
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
-# --- FIN DE LA SECTION CORRIGÉE POUR LE PRÉ-TRAITEMENT C++ ---
+# --- FIN DE LA SECTION DE PRÉ-TRAITEMENT C++ ---
 
 # Définition des chemins des fichiers source C++
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
@@ -234,7 +232,7 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ] && [ -f "$HASH_RECON_CPP_SOURCE" ]; then
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE et $HASH_RECON_CPP_SOURCE en 'hashcracker'...${NC}"
   echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" \"$HASH_RECON_CPP_SOURCE\" -o \"$HASHCRACKER_FINAL_EXECUTABLE\" -lcrypto -lssl -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" ${NC}"
 
-  # La commande de compilation a été mise à jour ici pour inclure les deux fichiers et les bibliothèques
+  # La commande de compilation inclut les deux fichiers et les bibliothèques nécessaires
   if g++ "$HASHCRACKER_CPP_SOURCE" "$HASH_RECON_CPP_SOURCE" -o "$HASHCRACKER_FINAL_EXECUTABLE" \
      -lcrypto -lssl -std=c++17 -fopenmp -pthread \
      -I"$OPENSSL_INCLUDE_PATH" \
