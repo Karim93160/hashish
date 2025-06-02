@@ -734,7 +734,8 @@ int main() {
         // The problematic line was here:
         // analyserTypeCaracteresHachage(input_hash_hex); // <-- NOUVEL APPEL ICI
         // It has been changed to:
-        analyzeHashCharacterType(input_hash_hex);** // <-- FIXED: Changed to the correct function name
+            analyzeHashCharacterType(input_hash_hex);
+
 
         if (detected_type_str == "INCONNU" || digest_algo == nullptr) {
             std::cerr << CR_RED << "[ERROR] Unknown or unsupported hash type. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
