@@ -46,10 +46,16 @@ termux-reload-settings
 ```
 
 ---
-**Nos complace anunciar una**
-### *Actualización Mayor: ¡Integración de un Módulo de Cracking C++ Optimizado y Ataque por Tabla Rainbow!* 🎉
 
-Nos complace anunciar una mejora significativa de HASHISH: ¡la integración de un **módulo de cracking de hash completamente reescrito en C++** (`hashcracker.cpp`) y la introducción de un **método de ataque por tabla rainbow** con su generador dedicado (`rainbow_generator.cpp`)! Esta actualización trae mayor rendimiento y nuevas capacidades para sus análisis.
+#### ¡Estamos encantados de anunciar 2 Actualizaciones Mayores:
+## *¡Análisis Predictivo de Conjuntos de Caracteres!* 🧠✨
+¡Estamos emocionados de presentar una actualización importante para Hashish! Su herramienta de análisis de hashes se vuelve aún más inteligente con la adición de análisis predictivo y recomendaciones de conjuntos de caracteres. ¡Se acabó la adivinanza, ahora es cuestión de precisión! 🎯
+Ahora, después de ingresar su hash a descifrar, Hashish ya no se limita a analizar el tipo de hash. Va más allá al ofrecerle recomendaciones informadas sobre qué tipos de conjuntos de caracteres priorizar para sus intentos de descifrado. 💡
+¿Cómo funciona? 🧐
+La herramienta analiza en profundidad el hash que ha proporcionado e identifica las características clave (numéricas, alfabéticas, alfanuméricas, hexadecimales). Basándose en este análisis, predice y muestra en verde 💚 los conjuntos de caracteres más relevantes para usar en sus ataques.
+![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/22d6748221bed40cc76429ad80a535aece2e78e3/Projet_06-02_FullHD1080p_HIGH_FR60-ezgif.com-video-to-gif-converter.gif)
+¡Esta nueva funcionalidad le ahorrará tiempo y optimizará sus esfuerzos de descifrado! ⏱️📈
+La integración de un módulo de descifrado de hash completamente reescrito en C++ (hashcracker.cpp) y la introducción de un método de ataque de tabla arcoíris* con su generador dedicado (rainbow_generator.cpp)! Esta actualización aporta un mayor rendimiento y nuevas capacidades para sus análisis.
 
 #### **¿Qué cambia con `hashcracker.cpp`?**
 
