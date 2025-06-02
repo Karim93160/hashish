@@ -9,6 +9,6 @@ bool estNumerique(const std::string& str);
 bool estAlphabetique(const std::string& str);
 bool estAlphanumerique(const std::string& str);
 bool estHexadecimal(const std::string& str);
-void analyserTypeCaracteresHachage(const std::string& hash_hex); // Nouvelle fonction pour l'analyse interactive
+void analyserTypeCaracteresHachage(const std::string& hash_hex); // <-- DÉCLARATION DE LA FONCTION D'ANALYSE
 
 #endif // HASH_RECON_H
