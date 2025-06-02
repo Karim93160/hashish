@@ -281,15 +281,12 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
-  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE...${NC}"
-  # Commande de compilation g++ avec les bonnes options pour C++17, OpenMP, Pthreads et OpenSSL.
-  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -std=c++17 -fopenmp -pthread -I\"$OPENSSL_INCLUDE_PATH\" -L\"$OPENSSL_LIB_PATH\" -lssl -lcrypto${NC}"
+  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les nouvelles options...${NC}"
+  # Commande de compilation g++ avec les nouvelles options pour C++17, OpenMP et OpenSSL.
+  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -march=native -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic ${NC}"
 
   if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
-     -std=c++17 -fopenmp -pthread \
-     -I"$OPENSSL_INCLUDE_PATH" \
-     -L"$OPENSSL_LIB_PATH" \
-     -lssl -lcrypto; then
+     -O3 -march=native -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic; then
 
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
