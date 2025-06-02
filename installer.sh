@@ -127,7 +127,6 @@ else
 fi
 
 # Ajout de la permission d'exécution à 'clear'
-# Ceci est la nouvelle ligne que tu as demandée
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear
@@ -221,7 +220,6 @@ fi
 echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.${NC}\n"
 
 # --- Copie des wordlists par défaut ---
-# CORRECTION ICI : Changer le chemin source pour les wordlists.
 echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
 if [ -d "$REPO_PATH/wordlists" ]; then # Vérifie le nouveau chemin
     cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
@@ -246,6 +244,7 @@ for file in "${CPP_FILES[@]}"; do
 
         # Détecter la ligne à remplacer : `std::seed_seq seed_sequence(hash.begin(), hash.end());`
         # qui se trouve généralement dans un bloc de code spécifique.
+        # Note: La regex s'adapte pour détecter le motif existant dans le fichier.
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
             sed -i '/std::string reduced_string = "";/{
                 N;N;N;N;N;N;N;N;N; # Lire suffisamment de lignes pour englober la zone
@@ -281,12 +280,12 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
-  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les nouvelles options...${NC}"
-  # Commande de compilation g++ avec les nouvelles options pour C++17, OpenMP et OpenSSL.
-  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -march=native -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic ${NC}"
+  echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les options pour Termux...${NC}"
+  # COMMANDE DE COMPILATION MISE À JOUR : Suppression de -march=native
+  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic ${NC}"
 
   if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
-     -O3 -march=native -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic; then
+     -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic; then
 
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
