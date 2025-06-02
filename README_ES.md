@@ -49,7 +49,7 @@ termux-reload-settings
 
 #### ¡Estamos encantados de anunciar 2 Actualizaciones Mayores:
 ## *¡Análisis Predictivo de Conjuntos de Caracteres!* 🧠✨
-¡Estamos emocionados de presentar una actualización importante para Hashish! Su herramienta de análisis de hashes se vuelve aún más inteligente con la adición de análisis predictivo y recomendaciones de conjuntos de caracteres. ¡Se acabó la adivinanza, ahora es cuestión de precisión! 🎯
+Su herramienta de análisis de hashes se vuelve aún más inteligente con la adición de análisis predictivo y recomendaciones de conjuntos de caracteres. ¡Se acabó la adivinanza, ahora es cuestión de precisión! 🎯
 Ahora, después de ingresar su hash a descifrar, Hashish ya no se limita a analizar el tipo de hash. Va más allá al ofrecerle recomendaciones informadas sobre qué tipos de conjuntos de caracteres priorizar para sus intentos de descifrado. 💡
 ¿Cómo funciona? 🧐
 La herramienta analiza en profundidad el hash que ha proporcionado e identifica las características clave (numéricas, alfabéticas, alfanuméricas, hexadecimales). Basándose en este análisis, predice y muestra en verde 💚 los conjuntos de caracteres más relevantes para usar en sus ataques.
