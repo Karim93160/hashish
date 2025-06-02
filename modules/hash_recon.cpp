@@ -1,10 +1,10 @@
 #include "hash_recon.h" // Inclut les déclarations de nos fonctions
-#include <cctype>       // Pour les fonctions de vérification de caractères (isdigit, isalpha, etc.)
-#include <iostream>     // Pour l'entrée/sortie (std::cout)
-#include <string>       // Pour std::string
-#include <iomanip>      // Pour std::quoted (si tu l'utilises, sinon tu peux l'enlever)
+#include <cctype>       // For character checking functions (isdigit, isalpha, etc.)
+#include <iostream>     // For input/output (std::cout)
+#include <string>       // For std::string
+#include <iomanip>      // For std::quoted (if you use it, otherwise you can remove it)
 
-// Macros de couleur pour une meilleure lisibilité dans la console
+// Console color macros (copied from hashcracker.cpp)
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -24,7 +24,7 @@
 #define CR_DARK_GRAY "\033[90m"
 
 
-// Fonction pour vérifier si une chaîne est uniquement numérique
+// Function to check if a string consists only of digits
 bool estNumerique(const std::string& str) {
     if (str.empty()) return false;
     for (char c : str) {
@@ -35,7 +35,7 @@ bool estNumerique(const std::string& str) {
     return true;
 }
 
-// Fonction pour vérifier si une chaîne est uniquement alphabétique
+// Function to check if a string consists only of alphabetic characters
 bool estAlphabetique(const std::string& str) {
     if (str.empty()) return false;
     for (char c : str) {
@@ -46,7 +46,7 @@ bool estAlphabetique(const std::string& str) {
     return true;
 }
 
-// Fonction pour vérifier si une chaîne est uniquement alphanumérique
+// Function to check if a string consists only of alphanumeric characters
 bool estAlphanumerique(const std::string& str) {
     if (str.empty()) return false;
     for (char c : str) {
@@ -57,7 +57,7 @@ bool estAlphanumerique(const std::string& str) {
     return true;
 }
 
-// Fonction pour vérifier si une chaîne est uniquement hexadécimale
+// Function to check if a string consists only of hexadecimal characters
 bool estHexadecimal(const std::string& str) {
     if (str.empty()) return false;
     for (char c : str) {
@@ -68,50 +68,49 @@ bool estHexadecimal(const std::string& str) {
     return true;
 }
 
-// Nouvelle fonction pour l'analyse interactive du type de caractères du hachage
-// Le nom de la fonction est bien "analyserTypeCaracteresHachage"
-void analyserTypeCaracteresHachage(const std::string& hash_hex) { 
-    std::cout << "\n" << CR_BLUE << "--- [ANALYSE APPROFONDIE DU HACHAGE] -------------------" << RESET << std::endl;
-    std::cout << CR_DARK_GRAY << "    Hachage à analyser: " << hash_hex << RESET << std::endl;
+// New function for interactive hash character type analysis
+void analyserTypeCaracteresHachage(const std::string& hash_hex) {
+    std::cout << "\n" << CR_BLUE << "--- [IN-DEPTH HASH ANALYSIS] -------------------" << RESET << std::endl;
+    std::cout << CR_DARK_GRAY << "    Hash to analyze: " << hash_hex << RESET << std::endl;
 
     bool est_numerique = estNumerique(hash_hex);
     bool est_alphabetique = estAlphabetique(hash_hex);
     bool est_alphanumerique = estAlphanumerique(hash_hex);
     bool est_hexadecimal = estHexadecimal(hash_hex);
 
-    std::cout << CR_CYAN << "    Résultats de l'analyse du HACHAGE:" << RESET << std::endl;
+    std::cout << CR_CYAN << "    HASH analysis results:" << RESET << std::endl;
 
-    // Affichage des résultats
-    std::cout << CR_CYAN << "      - Uniquement numérique (0-9): " << (est_numerique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
-    std::cout << CR_CYAN << "      - Uniquement alphabétique (a-z, A-Z): " << (est_alphabetique ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+    // Displaying results
+    std::cout << CR_CYAN << "      - Only numeric (0-9): " << (est_numerique ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
+    std::cout << CR_CYAN << "      - Only alphabetic (a-z, A-Z): " << (est_alphabetique ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
     
-    // Mise en évidence si le hachage est alphanumérique
+    // Highlighting the alphanumeric line if the HASH is alphanumeric
     if (est_alphanumerique) {
-        std::cout << CR_GREEN << BOLD << "      - Uniquement alphanumérique (lettres ou chiffres): OUI, contient [a-z] et [0-9]!" << RESET << std::endl;
+        std::cout << CR_GREEN << BOLD << "      - Only alphanumeric (letters or digits): YES, contains [a-z] and [0-9]!" << RESET << std::endl;
     } else {
-        std::cout << CR_CYAN << "      - Uniquement alphanumérique (lettres ou chiffres): " << CR_RED << "NON" << RESET << std::endl;
+        std::cout << CR_CYAN << "      - Only alphanumeric (letters or digits): " << CR_RED << "NO" << RESET << std::endl;
     }
 
-    // Détection hexadécimale
-    std::cout << CR_CYAN << "      - Uniquement hexadécimal (0-9, a-f, A-F): " << (est_hexadecimal ? CR_GREEN "OUI" : CR_RED "NON") << RESET << std::endl;
+    // Hexadecimal detection is important for the hash itself
+    std::cout << CR_CYAN << "      - Only hexadecimal (0-9, a-f, A-F): " << (est_hexadecimal ? CR_GREEN "YES" : CR_RED "NO") << RESET << std::endl;
 
     if (est_hexadecimal) {
-        std::cout << CR_YELLOW << "    [INFO] Un hachage hexadécimal est très courant pour MD5, SHA-1, SHA-256, etc." << RESET << std::endl;
+        std::cout << CR_YELLOW << "    [INFO] A hexadecimal hash is very common for MD5, SHA-1, SHA-256, etc." << RESET << std::endl;
     } else {
-        std::cout << CR_YELLOW << "    [INFO] Ce hachage ne semble PAS être purement hexadécimal. Il pourrait s'agir d'un encodage différent ou d'un hachage corrompu." << RESET << std::endl;
+        std::cout << CR_YELLOW << "    [INFO] This hash does NOT appear to be purely hexadecimal. It could be a different encoding or corrupted." << RESET << std::endl;
     }
 
-    // Recommandations pour les attaques par force brute
+    // Adding a specific RECOMMENDATION for brute-force attacks if the hash is alphanumeric
     if (est_alphanumerique) {
-        std::cout << "\n" << CR_GREEN << BOLD << "    [RECOMMANDATION] Pour les attaques par force brute (option 2), envisage un jeu de caractères alphanumérique." << RESET << std::endl;
+        std::cout << "\n" << CR_GREEN << BOLD << "    [RECOMMENDATION] For brute-force attacks (option 2), consider an alphanumeric character set." << RESET << std::endl;
     } else if (est_numerique) {
-        std::cout << "\n" << CR_YELLOW << "    [RECOMMANDATION] Pour les attaques par force brute (option 2), un jeu de caractères numérique pourrait être approprié." << RESET << std::endl;
+        std::cout << "\n" << CR_YELLOW << "    [RECOMMENDATION] For brute-force attacks (option 2), a numeric character set might be appropriate." << RESET << std::endl;
     } else if (est_alphabetique) {
-        std::cout << "\n" << CR_YELLOW << "    [RECOMMANDATION] Pour les attaques par force brute (option 2), un jeu de caractères alphabétique pourrait être approprié." << RESET << std::endl;
+        std::cout << "\n" << CR_YELLOW << "    [RECOMMENDATION] For brute-force attacks (option 2), an alphabetic character set might be appropriate." << RESET << std::endl;
     }
 
     if (!est_numerique && !est_alphabetique && !est_hexadecimal && !est_alphanumerique) {
-        std::cout << CR_YELLOW << "    [INFO] Ce hachage contient des caractères spéciaux ou inattendus. Il pourrait être encodé différemment ou corrompu." << RESET << std::endl;
+        std::cout << CR_YELLOW << "    [INFO] This hash contains special or unexpected characters. It might be differently encoded or corrupted." << RESET << std::endl;
     }
     
     std::cout << CR_BLUE << "--------------------------------------------------------" << RESET << std::endl;
