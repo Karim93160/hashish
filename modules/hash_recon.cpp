@@ -6,6 +6,7 @@
 #include <sstream> // Pour std::stringstream
 #include <vector>  // Pour std::vector dans SHA-256
 #include <algorithm> // Pour std::transform dans la génération de mots de passe
+#include <cstring>   // Pour memcpy
 
 // =======================================================
 // [ PARTIE 1 ] Fonctions d'analyse de type de caractères
