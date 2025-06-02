@@ -12,9 +12,8 @@
 #include <limits>
 #include <map>
 #include <thread>
-#include <cerrno> // Pour errno et strerror
+#include <cerrno>
 
-// Définitions des couleurs pour la console
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"
 #define RED     "\033[31m"
@@ -42,7 +41,6 @@
 #define CR_WHITE  WHITE BOLD
 #define CR_DARK_GRAY "\033[90m"
 
-// Convertit un tableau d'octets en chaîne hexadécimale
 std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
@@ -52,14 +50,12 @@ std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     return ss.str();
 }
 
-// Calcule le hachage d'une chaîne en utilisant OpenSSL
 std::string calculate_hash_openssl(const std::string& input, const EVP_MD* digest_type) {
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     if (mdctx == nullptr) {
         std::cerr << CR_RED << "[ERROR_OPENSSL] Failed to create EVP_MD_CTX." << RESET << std::endl;
         return "";
     }
-
     if (1 != EVP_DigestInit_ex(mdctx, digest_type, nullptr)) {
         ERR_print_errors_fp(stderr);
         EVP_MD_CTX_free(mdctx);
@@ -70,21 +66,17 @@ std::string calculate_hash_openssl(const std::string& input, const EVP_MD* diges
         EVP_MD_CTX_free(mdctx);
         return "";
     }
-
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len;
-
     if (1 != EVP_DigestFinal_ex(mdctx, digest, &digest_len)) {
         ERR_print_errors_fp(stderr);
         EVP_MD_CTX_free(mdctx);
         return "";
     }
-
     EVP_MD_CTX_free(mdctx);
     return bytes_to_hex_string(digest, digest_len);
 }
 
-// Récupère le type de hachage OpenSSL à partir d'une chaîne
 const EVP_MD* get_openssl_digest_type(const std::string& hash_type_str) {
     if (hash_type_str == "MD5") return EVP_md5();
     if (hash_type_str == "SHA1") return EVP_sha1();
@@ -94,32 +86,25 @@ const EVP_MD* get_openssl_digest_type(const std::string& hash_type_str) {
     return nullptr;
 }
 
-// Réduit un hachage à une chaîne de caractères de longueur cible en utilisant un charset
 std::string reduce_hash(const std::string& hash, size_t target_len, const std::string& charset, int r_index) {
     if (charset.empty() || target_len == 0) {
         return "";
     }
-
     std::string reduced_string = "";
-
-    // Utilisation des octets du hash et de l'index de réduction comme graine
     std::vector<unsigned int> seed_data;
-    for (char c : hash) { 
-        seed_data.push_back(static_cast<unsigned int>(c)); 
+    for (char c : hash) {
+        seed_data.push_back(static_cast<unsigned int>(c));
     }
     seed_data.push_back(static_cast<unsigned int>(r_index));
-
     std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());
     std::mt19937 generator(seed_sequence);
     std::uniform_int_distribution<> distribution(0, charset.length() - 1);
-
     for (size_t i = 0; i < target_len; ++i) {
         reduced_string += charset[distribution(generator)];
     }
     return reduced_string;
 }
 
-// Génère la table arc-en-ciel
 void generate_rainbow_table(
     const std::string& output_file,
     const EVP_MD* digest_type,
@@ -137,7 +122,6 @@ void generate_rainbow_table(
     std::cout << CR_DARK_GRAY << "    Number of Chains: " << num_chains << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Chain Length   : " << chain_length << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
-
     if (!digest_type) {
         std::cerr << CR_RED << "[ERROR] Invalid OpenSSL digest type. Aborting." << RESET << std::endl;
         return;
@@ -154,88 +138,71 @@ void generate_rainbow_table(
         std::cerr << CR_RED << "[ERROR] Number of chains and chain length must be greater than 0. Aborting." << RESET << std::endl;
         return;
     }
-
     std::ofstream outfile(output_file);
     if (!outfile.is_open()) {
         std::cerr << CR_RED << "[ERROR] Failed to open output file: " << output_file << " (" << strerror(errno) << ")" << RESET << std::endl;
         return;
     }
-
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_int_distribution<> charset_dist(0, charset.length() - 1);
     std::uniform_int_distribution<> len_dist(min_len, max_len);
-
     auto start_time = std::chrono::high_resolution_clock::now();
     long long generated_chains = 0;
-
     for (long long i = 0; i < num_chains; ++i) {
         int current_len = len_dist(generator);
         std::string start_word = "";
         for (int k = 0; k < current_len; ++k) {
             start_word += charset[charset_dist(generator)];
         }
-
         std::string current_word = start_word;
         std::string current_hash;
-
         for (int j = 0; j < chain_length; ++j) {
             current_hash = calculate_hash_openssl(current_word, digest_type);
-            if (current_hash.empty()) { // Vérifier si le hachage a échoué
+            if (current_hash.empty()) {
                 std::cerr << CR_RED << "[ERROR] Hash calculation failed for word: " << current_word << ". Skipping chain." << RESET << std::endl;
-                start_word = ""; // Invalider la chaîne pour éviter l'écriture
+                start_word = "";
                 break;
             }
             if (j == chain_length - 1) {
-                break; // C'est la dernière étape, on n'a pas besoin de réduire
+                break;
             }
             current_word = reduce_hash(current_hash, current_len, charset, j);
-            if (current_word.empty()) { // Vérifier si la réduction a échoué
+            if (current_word.empty()) {
                 std::cerr << CR_RED << "[ERROR] Reduction failed for hash: " << current_hash << ". Skipping chain." << RESET << std::endl;
-                start_word = ""; // Invalider la chaîne pour éviter l'écriture
+                start_word = "";
                 break;
             }
         }
-        
-        if (!start_word.empty()) { // Écrire la chaîne seulement si elle est valide
+        if (!start_word.empty()) {
             outfile << start_word << ":" << current_hash << "\n";
             generated_chains++;
         }
-
         if (generated_chains > 0 && generated_chains % 1000 == 0) {
             std::cout << "\r" << CR_YELLOW << "[PROGRESS] Generated " << generated_chains << "/" << num_chains << " chains. Last start word: " << start_word << std::flush << RESET;
         }
     }
-
     outfile.close();
-    // Effacer la ligne de progression
     std::cout << "\r" << std::string(80, ' ') << "\r";
-
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
-
     std::cout << CR_GREEN << "[COMPLETED] Rainbow table generated in " << std::fixed << std::setprecision(2) << duration.count() << " seconds. (" << generated_chains << " chains saved)" << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
 
-
 int main() {
-    std::cout << "\033[H\033[J"; // Nettoie l'écran de la console
-
+    std::cout << "\033[H\033[J";
     std::cout << CR_RED BOLD << "   H A S H C R A C K E R - R A I N B O W G E N " << RESET << std::endl;
     std::cout << CR_CYAN << "   ------------------------------------------- " << RESET << std::endl;
     std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
     std::cout << CR_MAGENTA << "\n  [INFO] This tool generates Rainbow Tables. " << RESET << std::endl;
     std::cout << CR_MAGENTA << "  [WARNING] Generation can be very time and resource intensive." << RESET << std::endl;
     std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
-
     std::string output_filename;
     std::cout << CR_YELLOW << "\n [OUTPUT FILE] Enter desired output filename (e.g., my_rainbow_table.txt) > " << RESET;
     std::cin >> output_filename;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Vider le buffer après cin
-
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::cout << CR_BLUE << "\n--- [PARAMETERS] --------------------------------------" << RESET << std::endl;
-    
     std::map<int, std::pair<std::string, std::string>> predefined_charsets;
     predefined_charsets[1] = {"Lowercase letters (a-z)", "abcdefghijklmnopqrstuvwxyz"};
     predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
@@ -243,18 +210,15 @@ int main() {
     predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
     predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
     predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
-
     std::cout << CR_CYAN << "   Choose a predefined charset or enter your own:" << RESET << std::endl;
     for (const auto& pair : predefined_charsets) {
         std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
     }
     std::cout << CR_CYAN << "   Or enter 'C' for Custom charset" << RESET << std::endl;
     std::cout << CR_YELLOW << " [CHARACTER SET CHOICE] Enter choice (1-" << predefined_charsets.size() << " or C) > " << RESET;
-    
     std::string charset_choice_str;
-    std::getline(std::cin, charset_choice_str); // Utiliser getline pour la ligne entière
+    std::getline(std::cin, charset_choice_str);
     std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper);
-
     std::string charset_input;
     if (charset_choice_str == "C") {
         std::cout << CR_YELLOW << " [CUSTOM CHARACTER SET] Enter your custom charset > " << RESET;
@@ -267,29 +231,27 @@ int main() {
                 std::cout << CR_DARK_GRAY << "   Selected Charset: " << predefined_charsets[choice_num].first << RESET << std::endl;
             } else {
                 std::cerr << CR_RED << "[ERROR] Invalid charset choice. Using empty charset. Please restart." << RESET << std::endl;
-                return 1; // Quitter si le choix est invalide
+                return 1;
             }
         } catch (const std::invalid_argument& e) {
             std::cerr << CR_RED << "[ERROR] Invalid input for charset choice. Using empty charset. Please restart." << RESET << std::endl;
-            return 1; // Quitter si l'entrée est invalide
+            return 1;
         } catch (const std::out_of_range& e) {
             std::cerr << CR_RED << "[ERROR] Charset choice out of range. Using empty charset. Please restart." << RESET << std::endl;
-            return 1; // Quitter si hors de portée
+            return 1;
         }
     }
-    
     if (charset_input.empty()) {
         std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot generate rainbow table. Please restart." << RESET << std::endl;
         return 1;
     }
-
     int min_len, max_len;
     while (true) {
         std::cout << CR_YELLOW << " [MIN LENGTH] Enter minimum password length for chains (>0) > " << RESET;
         std::cin >> min_len;
         if (std::cin.fail() || min_len <= 0) {
-            std::cin.clear(); // Effacer les drapeaux d'erreur
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Ignorer le reste de la ligne
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cerr << CR_RED << "[ERROR] Invalid input. Please enter a positive integer for minimum length." << RESET << std::endl;
         } else {
             break;
@@ -306,7 +268,6 @@ int main() {
             break;
         }
     }
-
     long long num_chains;
     while (true) {
         std::cout << CR_YELLOW << " [NUMBER OF CHAINS] Enter number of chains to generate (>0) > " << RESET;
@@ -319,7 +280,6 @@ int main() {
             break;
         }
     }
-
     int chain_length;
     while (true) {
         std::cout << CR_YELLOW << " [CHAIN LENGTH] Enter length of each chain (>0) > " << RESET;
@@ -332,8 +292,7 @@ int main() {
             break;
         }
     }
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Vider le buffer après le dernier cin
-
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::string hash_type_str;
     const EVP_MD* digest_algo = nullptr;
     while (digest_algo == nullptr) {
@@ -345,36 +304,27 @@ int main() {
             std::cerr << CR_RED << "[ERROR] Unsupported hash type. Please enter one of: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
         }
     }
-    
-    // Calcul de la taille estimée du fichier
-    // Longueur moyenne d'un mot + longueur du hash (en hex, donc *2) + 1 pour le ':' + 1 pour '\n'
     double avg_len = (min_len + max_len) / 2.0;
     double estimated_hash_len = EVP_MD_size(digest_algo) * 2;
-    double estimated_line_length = avg_len + estimated_hash_len + 2; // +2 pour ':' et '\n'
+    double estimated_line_length = avg_len + estimated_hash_len + 2;
     double estimated_file_size_mb = (num_chains * estimated_line_length) / (1024.0 * 1024.0);
-
     std::cout << CR_MAGENTA << "\n[INFO] Generating a table of " << num_chains << " chains, each " << chain_length << " steps long." << RESET << std::endl;
-    std::cout << CR_MAGENTA << "       This will result in an estimated file size of " 
+    std::cout << CR_MAGENTA << "       This will result in an estimated file size of "
               << std::fixed << std::setprecision(2) << estimated_file_size_mb
               << " MB." << RESET << std::endl;
     std::cout << CR_MAGENTA << "       (Estimation can vary based on actual password lengths and hash collisions.)" << RESET << std::endl;
-
     char confirm_choice;
     std::cout << CR_YELLOW << "Do you want to proceed with rainbow table generation? (y/n) > " << RESET;
     std::cin >> confirm_choice;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
     if (tolower(confirm_choice) != 'y') {
         std::cout << CR_YELLOW << "[INFO] Rainbow table generation cancelled by user." << RESET << std::endl;
         return 0;
     }
-
     generate_rainbow_table(output_filename, digest_algo, charset_input, min_len, max_len, num_chains, chain_length);
-
     std::cout << CR_BLUE << "\n==========================================================" << RESET << std::endl;
     std::cout << CR_CYAN << "  [MODULE COMPLETE] Rainbow Table Generation finished. " << RESET << std::endl;
     std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(2));
-
     return 0;
 }
