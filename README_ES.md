@@ -14,7 +14,7 @@
 </div>
 
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/8ce3d8fac41a5cbeb94f8082d4febd5d688732d1/Screen_Recording_20250531_163158_Termux-ezgif.com-video-to-gif-converter-1.gif)
-[![Versión](https://img.shields.io/badge/Versión-6.0-bleu.svg)](https://github.com/Karim93160/wazabi)
+[![Versión](https://img.shields.io/badge/Versión-5.1-red.svg)](https://github.com/Karim93160/wazabi)
 [![Licencia](https://img.shields.io/badge/Licencia-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Mantenimiento](https://img.shields.io/badge/Mantenido-Sí-green.svg?style=flat-square)](https://github.com/YOUR_GITHUB_USERNAME/hashish/commits/main)
 [![Plataforma](https://img.shields.io/badge/Plataforma-Termux%20%7C%20Linux-lightgrey.svg?style=flat-square)](https://termux.com/)
@@ -46,16 +46,10 @@ termux-reload-settings
 ```
 
 ---
+**Nos complace anunciar una**
+### *Actualización Mayor: ¡Integración de un Módulo de Cracking C++ Optimizado y Ataque por Tabla Rainbow!* 🎉
 
-#### ¡Estamos encantados de anunciar 2 Actualizaciones Mayores:
-## *¡Análisis Predictivo de Conjuntos de Caracteres!* 🧠✨
-Su herramienta de análisis de hashes se vuelve aún más inteligente con la adición de análisis predictivo y recomendaciones de conjuntos de caracteres. ¡Se acabó la adivinanza, ahora es cuestión de precisión! 🎯
-Ahora, después de ingresar su hash a descifrar, Hashish ya no se limita a analizar el tipo de hash. Va más allá al ofrecerle recomendaciones informadas sobre qué tipos de conjuntos de caracteres priorizar para sus intentos de descifrado. 💡
-¿Cómo funciona? 🧐
-La herramienta analiza en profundidad el hash que ha proporcionado e identifica las características clave (numéricas, alfabéticas, alfanuméricas, hexadecimales). Basándose en este análisis, predice y muestra en verde 💚 los conjuntos de caracteres más relevantes para usar en sus ataques.
-![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/22d6748221bed40cc76429ad80a535aece2e78e3/Projet_06-02_FullHD1080p_HIGH_FR60-ezgif.com-video-to-gif-converter.gif)
-¡Esta nueva funcionalidad le ahorrará tiempo y optimizará sus esfuerzos de descifrado! ⏱️📈
-La integración de un módulo de descifrado de hash completamente reescrito en C++ (hashcracker.cpp) y la introducción de un método de ataque de tabla arcoíris* con su generador dedicado (rainbow_generator.cpp)! Esta actualización aporta un mayor rendimiento y nuevas capacidades para sus análisis.
+Nos complace anunciar una mejora significativa de HASHISH: ¡la integración de un **módulo de cracking de hash completamente reescrito en C++** (`hashcracker.cpp`) y la introducción de un **método de ataque por tabla rainbow** con su generador dedicado (`rainbow_generator.cpp`)! Esta actualización trae mayor rendimiento y nuevas capacidades para sus análisis.
 
 #### **¿Qué cambia con `hashcracker.cpp`?**
 
