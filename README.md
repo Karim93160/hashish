@@ -52,7 +52,7 @@ termux-reload-settings
 #### **Nous sommes ravis d'annoncer 2 mises à Jour Majeures :** 
 
 ### **Analyse prédictive des jeux de caractères ! 🧠✨
-Nous sommes ravis de vous présenter une mise à jour majeure pour Hashish ! Votre outil d'analyse de hachages devient encore plus intelligent avec l'ajout d'une analyse prédictive et de recommandations de jeux de caractères. Fini les devinettes, place à la précision ! 🎯
+Votre outil d'analyse de hachages devient encore plus intelligent avec l'ajout d'une analyse prédictive et de recommandations de jeux de caractères. Fini les devinettes, place à la précision ! 🎯
 Désormais, après avoir saisi votre hachage à craquer, Hashish ne se contente plus d'analyser le type de hachage. Il va plus loin en vous offrant des recommandations éclairées sur les types de jeux de caractères à privilégier pour vos tentatives de cassage. 💡
 Comment ça marche ? 🧐
 L'outil analyse en profondeur le hachage que vous avez fourni et identifie les caractéristiques clés (numérique, alphabétique, alphanumérique, hexadécimal). Sur la base de cette analyse, il prédit et affiche en vert 💚 les jeux de caractères les plus pertinents à utiliser pour vos attaques.**
