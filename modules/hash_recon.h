@@ -22,7 +22,7 @@
 #define CR_MAGENTA MAGENTA BOLD FAINT
 #define CR_DARK_GRAY "\033[90m"
 
-// Fonctions d'analyse de type de caractères (pour le mot de passe retrouvé)
+// Fonctions d'analyse de type de caractères (pour le mot de passe retrouvé ou en clair)
 bool estNumerique(const std::string& str);
 bool estAlphabetique(const std::string& str);
 bool estAlphanumerique(const std::string& str);
@@ -32,10 +32,13 @@ bool estHexadecimal(const std::string& str); // Utile pour vérifier le hash lui
 std::string md5(const std::string& str);
 std::string sha256(const std::string& str);
 
-// Fonction d'analyse principale (pour le hash lui-même, comme tu l'avais initialement)
+// Fonction d'analyse pour un HASH HEXADECIMAL (celle que tu voyais avant)
 void analyserTypeCaracteresHachage(const std::string& hash_hex);
 
-// Nouvelle fonction pour la force brute et l'analyse du mot de passe original
+// NOUVELLE FONCTION : Analyse le type de caractères d'un mot de passe EN CLAIR
+void analyserTypeCaracteresMotDePasseClair(const std::string& password_clair);
+
+// Fonction d'analyse principale (pour le hash lui-même, comme tu l'avais initialement)
 void crackerEtAnalyserMotDePasse(const std::string& hash_cible, const std::string& type_hash, int max_longueur);
 
 #endif // HASH_RECON_H
