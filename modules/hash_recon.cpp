@@ -4,7 +4,7 @@
 #include <string>       // Pour std::string
 #include <iomanip>      // Pour std::quoted (si tu l'utilises, sinon tu peux l'enlever)
 
-// Macros de couleur pour une meilleure lisibilité dans la console (copiées de hashcracker.cpp)
+// Macros de couleur pour une meilleure lisibilité dans la console
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -69,7 +69,8 @@ bool estHexadecimal(const std::string& str) {
 }
 
 // Nouvelle fonction pour l'analyse interactive du type de caractères du hachage
-void analyserTypeCaracteresHachage(const std::string& hash_hex) { // <-- DÉFINITION DE LA FONCTION AVEC LE NOM FRANÇAIS
+// Le nom de la fonction est bien "analyserTypeCaracteresHachage"
+void analyserTypeCaracteresHachage(const std::string& hash_hex) { 
     std::cout << "\n" << CR_BLUE << "--- [ANALYSE APPROFONDIE DU HACHAGE] -------------------" << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Hachage à analyser: " << hash_hex << RESET << std::endl;
 
