@@ -287,7 +287,7 @@ void crackerEtAnalyserMotDePasse(const std::string& hash_cible, const std::strin
     std::vector<std::pair<std::string, std::string>> charsets_to_try;
     charsets_to_try.push_back({"Numeric (0-9)", numeric_charset});
     charsets_to_try.push_back({"Alphabetic (a-Z)", alpha_charset});
-    charsets_to_back({"Alphanumeric (a-Z, 0-9)", alphanumeric_charset});
+    charsets_to_try.push_back({"Alphanumeric (a-Z, 0-9)", alphanumeric_charset}); // <-- Ligne corrigée
     // Tu peux ajouter d'autres jeux de caractères ici (ex: avec caractères spéciaux)
 
     std::string mot_de_passe_trouve = "";
