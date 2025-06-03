@@ -4,9 +4,7 @@ import os
 import sys
 import time
 import subprocess
-import itertools
 
-# --- Couleurs ANSI ---
 RESET = "\033[0m"
 BLACK = "\033[30m"
 RED = "\033[31m"
@@ -34,18 +32,11 @@ CR_MAGENTA = MAGENTA + BOLD + FAINT
 CR_WHITE = WHITE + BOLD
 CR_DARK_GRAY = "\033[90m"
 
-# --- Chemins globaux ---
 TERMUX_BIN_DIR = "/data/data/com.termux/files/usr/bin"
-
-try:
-    CURRENT_SCRIPT_PATH = os.path.abspath(__file__)
-except NameError:
-    CURRENT_SCRIPT_PATH = os.path.abspath(sys.argv[0])
-
+CURRENT_SCRIPT_PATH = os.path.abspath(__file__)
 CURRENT_SCRIPT_DIR = os.path.dirname(CURRENT_SCRIPT_PATH)
 
-# Gestion du mode Termux vs normal
-if CURRENT_SCRIPT_DIR.startswith(TERMUX_BIN_DIR):
+if CURRENT_SCRIPT_DIR == TERMUX_BIN_DIR:
     MODULES_PATH = os.path.join(TERMUX_BIN_DIR, "modules")
     BANNER_PATH = os.path.join(TERMUX_BIN_DIR, "banner-hashish.txt")
 else:
@@ -54,94 +45,111 @@ else:
 
 HASHCRACKER_CPP_EXECUTABLE = os.path.join(MODULES_PATH, "hashcracker")
 
-
 def clear_screen():
     try:
-        if os.name == "nt":
-            os.system("cls")
-        else:
-            os.system("clear")
-    except:
-        print("\n" * 100)
+        os.system('clear')
+    except Exception as e:
+        print(CR_RED + f"[ERROR] Failed to clear screen: {e}. Check 'clear' command permissions." + RESET)
+        time.sleep(1)
 
-
-def color_generator():
-    colors = [CR_CYAN, CR_GREEN, CR_YELLOW, CR_BLUE, CR_MAGENTA]
-    return itertools.cycle(colors)
-
-
-def animate_banner(delay=0.01):
+def display_banner():
     clear_screen()
     try:
         with open(BANNER_PATH, 'r') as f:
-            lines = f.readlines()
-            colors = color_generator()
-            for line in lines:
-                print(next(colors) + line.rstrip() + RESET)
-                time.sleep(delay)
+            banner = f.read()
+            print(CR_CYAN + banner + RESET)
     except FileNotFoundError:
-        print(CR_RED + "[ERROR] Banner file not found!" + RESET)
-        print(CR_YELLOW + f"         → Expected at: {BANNER_PATH}" + RESET)
+        print(CR_RED + "[ERROR] Banner file not found! " + BANNER_PATH + RESET)
+        print(CR_RED + "         Please ensure 'banner-hashish.txt' is in the same directory as 'hashish.py'" + RESET)
+        print(CR_RED + "         or in " + TERMUX_BIN_DIR + RESET)
+        print(CR_YELLOW + "         Continuing without banner..." + RESET)
         time.sleep(2)
-    except Exception as e:
-        print(CR_RED + f"[ERROR] Banner animation failed: {e}" + RESET)
-        time.sleep(2)
-
-
-def display_banner():
-    animate_banner()
-    time.sleep(0.5)
-
 
 def check_executable(path):
     return os.path.isfile(path) and os.access(path, os.X_OK)
 
-
 def run_hashcracker_cpp():
     clear_screen()
     print(CR_BLUE + "--- [LAUNCHING MODULE] Hash Cracker (C++) ---" + RESET)
+    print(CR_DARK_GRAY + f"    Attempting to launch C++ module: {HASHCRACKER_CPP_EXECUTABLE}" + RESET)
+    print(CR_DARK_GRAY + "    Note: Hashish will need to be relaunched after the C++ module finishes." + RESET)
     time.sleep(1)
     if check_executable(HASHCRACKER_CPP_EXECUTABLE):
         try:
             os.execv(HASHCRACKER_CPP_EXECUTABLE, [HASHCRACKER_CPP_EXECUTABLE])
+        except OSError as e:
+            print(CR_RED + f"[ERROR] Failed to execute C++ module with os.execv: {e}" + RESET)
+            print(CR_YELLOW + "          Please ensure the executable has correct permissions and path." + RESET)
+            print(CR_YELLOW + "          Path attempted: " + HASHCRACKER_CPP_EXECUTABLE + RESET)
+            time.sleep(3)
         except Exception as e:
-            print(CR_RED + f"[ERROR] Could not execute C++ binary: {e}" + RESET)
+            print(CR_RED + f"[ERROR] An unexpected error occurred while preparing C++ module launch: {e}" + RESET)
+            time.sleep(3)
     else:
-        print(CR_RED + "[ERROR] C++ binary not found or not executable." + RESET)
-        print(CR_YELLOW + "  → Compile 'hashcracker.cpp' and place the binary in 'modules/'." + RESET)
-    print(CR_RED + "\n[INFO] Please relaunch hashish.py." + RESET)
+        print(CR_RED + f"[ERROR] C++ executable '{HASHCRACKER_CPP_EXECUTABLE}' is not found or not executable." + RESET)
+        print(CR_YELLOW + "          Please compile hashcracker.cpp (located in your hashish/modules folder) " + RESET)
+        print(CR_YELLOW + "          and ensure the compiled binary is at the specified path and has execute permissions." + RESET)
+        print(CR_YELLOW + "          Run 'chmod +x " + HASHCRACKER_CPP_EXECUTABLE + "' to give execute permissions." + RESET)
+        print(CR_YELLOW + "          Or simply re-run the 'installer.sh' script to fix this automatically." + RESET)
+        time.sleep(3)
+    print(CR_RED + "\n[INFO] Due to an error in launching the C++ module, or if it completed," + RESET)
+    print(CR_RED + "       hashish.py needs to be restarted. Please relaunch hashish." + RESET)
     time.sleep(2)
     sys.exit(0)
 
-
-def run_module(name, script_name):
+def run_web_scanner():
     clear_screen()
-    print(CR_BLUE + f"--- [LAUNCHING MODULE] {name} ---" + RESET)
-    script_path = os.path.join(MODULES_PATH, script_name)
-    if os.path.exists(script_path):
+    print(CR_BLUE + "--- [LAUNCHING MODULE] Web Scanner ---" + RESET)
+    web_scanner_script = os.path.join(MODULES_PATH, "web_scanner.py")
+    if os.path.exists(web_scanner_script):
         try:
-            subprocess.run([sys.executable, script_path], check=True)
+            subprocess.run([sys.executable, web_scanner_script], check=True,
+                           stdout=sys.stdout, stderr=sys.stderr)
         except subprocess.CalledProcessError as e:
-            print(CR_RED + f"[ERROR] Module crashed: {e}" + RESET)
+            print(CR_RED + f"[ERROR] Web Scanner module exited with an error: {e}" + RESET)
         except Exception as e:
-            print(CR_RED + f"[ERROR] Unexpected error: {e}" + RESET)
+            print(CR_RED + f"[ERROR] An unexpected error occurred: {e}" + RESET)
     else:
-        print(CR_RED + f"[ERROR] Module not found: {script_path}" + RESET)
+        print(CR_RED + f"[ERROR] Web Scanner module not found: {web_scanner_script}" + RESET)
+        print(CR_YELLOW + "         Please ensure 'web_scanner.py' is in your 'modules' directory." + RESET)
     print(CR_BLUE + "\n--- [MODULE END] Press Enter to return to main menu ---" + RESET)
     input()
 
-
-def run_web_scanner():
-    run_module("Web Scanner", "web_scanner.py")
-
-
 def run_reconnaissance():
-    run_module("Reconnaissance", "recon.py")
-
+    clear_screen()
+    print(CR_BLUE + "--- [LAUNCHING MODULE] Reconnaissance ---" + RESET)
+    recon_script = os.path.join(MODULES_PATH, "recon.py")
+    if os.path.exists(recon_script):
+        try:
+            subprocess.run([sys.executable, recon_script], check=True,
+                           stdout=sys.stdout, stderr=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(CR_RED + f"[ERROR] Reconnaissance module exited with an error: {e}" + RESET)
+        except Exception as e:
+            print(CR_RED + f"[ERROR] An unexpected error occurred: {e}" + RESET)
+    else:
+        print(CR_RED + f"[ERROR] Reconnaissance module not found: {recon_script}" + RESET)
+        print(CR_YELLOW + "         Please ensure 'recon.py' is in your 'modules' directory." + RESET)
+    print(CR_BLUE + "\n--- [MODULE END] Press Enter to return to main menu ---" + RESET)
+    input()
 
 def run_osint():
-    run_module("OSINT", "osint.py")
-
+    clear_screen()
+    print(CR_BLUE + "--- [LAUNCHING MODULE] OSINT ---" + RESET)
+    osint_script = os.path.join(MODULES_PATH, "osint.py")
+    if os.path.exists(osint_script):
+        try:
+            subprocess.run([sys.executable, osint_script], check=True,
+                           stdout=sys.stdout, stderr=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(CR_RED + f"[ERROR] OSINT module exited with an error: {e}" + RESET)
+        except Exception as e:
+            print(CR_RED + f"[ERROR] An unexpected error occurred: {e}" + RESET)
+    else:
+        print(CR_RED + f"[ERROR] OSINT module not found: {osint_script}" + RESET)
+        print(CR_YELLOW + "         Please ensure 'osint.py' is in your 'modules' directory." + RESET)
+    print(CR_BLUE + "\n--- [MODULE END] Press Enter to return to main menu ---" + RESET)
+    input()
 
 def main_menu():
     while True:
@@ -156,6 +164,7 @@ def main_menu():
         choice = input(CR_YELLOW + "\n [CHOOSE YOUR WEAPON] > " + RESET).strip()
         if choice == '1':
             run_hashcracker_cpp()
+            break
         elif choice == '2':
             run_web_scanner()
         elif choice == '3':
@@ -169,7 +178,6 @@ def main_menu():
             print(CR_RED + "[ERROR] Invalid choice. Please enter a number from the menu." + RESET)
             time.sleep(1.5)
 
-
 if __name__ == "__main__":
     try:
         main_menu()
@@ -177,5 +185,5 @@ if __name__ == "__main__":
         print(CR_GREEN + "\n[INFO] Exiting HASHISH. Stay safe and ethical! 👋" + RESET)
         sys.exit(0)
     except Exception as e:
-        print(CR_RED + f"[CRITICAL ERROR] Unhandled exception: {e}" + RESET)
+        print(CR_RED + f"[CRITICAL ERROR] An unhandled error occurred: {e}" + RESET)
         sys.exit(1)
