@@ -105,6 +105,7 @@ echo -e "${G}  ✓ Dépendances installées${NC}\n"
 pretty_print $Y "" "  [3/6] Préparation de l'installation..."
 mkdir -p "$MODULES_DIR" "$WORDLISTS_DIR"
 cp "$REPO_PATH/hashish.py" "$INSTALL_DIR/"
+**cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/" 2>/dev/null** # Nouvelle ligne pour copier la bannière
 find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/null
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 echo -e "${G}  ✓ Fichiers copiés${NC}\n"
