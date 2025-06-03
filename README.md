@@ -210,6 +210,7 @@ _________
   </p>
 </div>
 _________
+
 **⚠️ Avertissement**
 
 *Hashish Ethical Toolkit est destiné à un usage éthique et légal uniquement. Les développeurs ne sont pas responsables de toute utilisation abusive ou illégale de cet outil.*
