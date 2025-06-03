@@ -196,7 +196,20 @@ Pour toute question ou suggestion, n'hésitez pas à ouvrir une [issue sur GitHu
 [![Contact par Email](https://img.shields.io/badge/Contact-par%20Email-blue.svg)](mailto:karim9316077185@gmail.com)
 
 _________
-
+<div align="center">
+  <h2>🌿 Hashish - Code de Conduite 🌿</h2>
+  <p>
+    Nous nous engageons à créer un environnement accueillant et respectueux pour tous les contributeurs.
+    Veuillez prendre un moment pour lire notre <a href="CODE_OF_CONDUCT.md">Code de Conduite</a>.
+    En participant à ce projet, vous acceptez de respecter ses termes.
+  </p>
+  <p>
+    <a href="CODE_OF_CONDUCT.md">
+      <img src="https://img.shields.io/badge/Code%20of%20Conduct-Veuillez%20Lire-blueviolet?style=for-the-badge&logo=github" alt="Code de Conduite">
+    </a>
+  </p>
+</div>
+_______
 **⚠️ Avertissement**
 
 *Hashish Ethical Toolkit est destiné à un usage éthique et légal uniquement. Les développeurs ne sont pas responsables de toute utilisation abusive ou illégale de cet outil.*
