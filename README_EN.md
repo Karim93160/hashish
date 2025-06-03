@@ -1,3 +1,6 @@
+![GitHub stars](https://img.shields.io/github/stars/Karim93160/hashish?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Karim93160/hashish?style=social)
+
 [🇫🇷 Français](https://github.com/karim93160/hashish/blob/main/README.md) | [🇬🇧 English](https://github.com/karim93160/hashish/blob/main/README_EN.md) | [🇪🇸 Español](https://github.com/karim93160/hashish/blob/main/README_ES.md)
 
 ![Project Status](https://img.shields.io/badge/Project%20Status-STABLE%20%F0%9F%91%8D-green)
