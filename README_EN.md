@@ -33,15 +33,7 @@ Our goal is to provide a versatile and easy-to-use toolkit that allows users to 
 *Copy* and *Paste* into Termux
 the following command:
 ```
-{ yes "N" | pkg upgrade -y || true; } && \
-pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl ncurses-utils || \
-{ echo "Installation des paquets échouée - tentative de continuation..."; } && \
-echo -e "\n\n\033[31mATTENTION : Cet outil n'est PAS destiné aux appareils rootés !\033[0m\n" && \
-git clone https://github.com/Karim93160/hashish.git ~/hashish && \
-cd ~/hashish && \
-chmod +x installer.sh && \
-./installer.sh && \
-termux-reload-settings
+pkg update -y && pkg upgrade -y && pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl ncurses-utils && git clone https://github.com/Karim93160/hashish.git ~/hashish && cd ~/hashish && chmod +x installer.sh && ./installer.sh && termux-reload-settings
 
 ```
 
