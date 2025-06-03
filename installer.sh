@@ -13,7 +13,7 @@ clear_screen() {
         clear
     else
         printf '\033c'
-    }
+    fi # <-- Correction ici : l'accolade fermante du `if` doit être suivie d'un `fi`
 }
 
 clear_screen
@@ -87,8 +87,6 @@ install_package() {
     fi
 }
 
-# --- DÉBUT DE LA SECTION CORRIGÉE ---
-
 # Liste des paquets essentiels pour Termux
 # build-essential inclut g++ et make
 # `libssl-dev` n'existe pas directement, `openssl` suffit pour la compilation dans Termux.
@@ -115,8 +113,6 @@ else
   echo -e "${GREEN}Compilateur g++ est maintenant disponible.${NC}"
 fi
 
-# --- FIN DE LA SECTION CORRIGÉE ---
-
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear
@@ -138,7 +134,7 @@ if [ ! -f "$REPO_PATH/hashish.py" ]; then
   exit 1
 fi
 if [ ! -d "$REPO_PATH/modules" ]; then
-  echo -e "${RED}Erreur : Le dossier 'modules' est introuvable dans '$REPO_PATH'. Assurez-se que les modules sont bien dans un sous-dossier 'modules'.${NC}"
+  echo -e "${RED}Erreur : Le dossier 'modules' est introuvable dans '$REPO_PATH'. Assurez-vous que les modules sont bien dans un sous-dossier 'modules'.${NC}"
   exit 1
 fi
 if [ ! -f "$REPO_PATH/banner-hashish.txt" ]; then
@@ -215,8 +211,8 @@ std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
         fi
     else
         echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
-    fi
-done
+    </f
+fi
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
