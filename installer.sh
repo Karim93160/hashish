@@ -2,12 +2,12 @@
 
 # Définition des codes couleurs pour une sortie console plus lisible
 GREEN='\033[0;32m'
-NC='\033[0m'
+NC='\033[0m'      # Pas de couleur
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-INFO='\033[0;34m' # Bleu clair pour les informations
+INFO='\033[0;34m' # Bleu clair pour les informations (alias de BLUE)
 
 # --- Fonctions Utilitaires ---
 
@@ -17,6 +17,19 @@ clear_screen() {
         clear
     else
         printf '\033c'
+    fi
+}
+
+# Fonction d'aide pour installer un paquet Termux
+install_package() {
+    local package_name=$1
+    echo -e "${INFO}Tentative d'installation du paquet Termux : ${package_name}...${NC}"
+    if pkg install "$package_name" -y; then
+        echo -e "${GREEN}Paquet '${package_name}' installé avec succès.${NC}"
+        return 0
+    else
+        echo -e "${RED}Échec de l'installation du paquet '${package_name}'. Veuillez vérifier votre connexion Internet ou les dépôts Termux.${NC}"
+        return 1
     fi
 }
 
@@ -45,7 +58,7 @@ DEFAULT_REPO_PATH="$DEFAULT_HOME_PATH/$REPO_NAME"
 CURRENT_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 REPO_PATH=""
 
-# Recherche du dossier 'hashish' en remontant l'arborescence
+# Recherche du dossier 'hashish' en remontant l'arborescence à partir de l'emplacement du script
 temp_dir="$CURRENT_SCRIPT_DIR"
 while [[ "$temp_dir" != "/" && "$temp_dir" != "" ]]; do
     if [[ "$(basename "$temp_dir")" == "$REPO_NAME" ]]; then
@@ -55,29 +68,35 @@ while [[ "$temp_dir" != "/" && "$temp_dir" != "" ]]; do
     temp_dir=$(dirname "$temp_dir")
 done
 
-# Détermine le chemin final du dépôt
-if [ -n "$REPO_PATH" ]; then
-    echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à partir de l'emplacement actuel : ${REPO_PATH}${NC}"
-elif [ -d "$DEFAULT_REPO_PATH" ]; then
-    REPO_PATH="$DEFAULT_REPO_PATH"
-    echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à l'emplacement par défaut : ${REPO_PATH}${NC}"
-else
+# Si le dépôt n'est pas trouvé en remontant, vérifie l'emplacement par défaut
+if [ -z "$REPO_PATH" ]; then
+    if [ -d "$DEFAULT_REPO_PATH" ]; then
+        REPO_PATH="$DEFAULT_REPO_PATH"
+        echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à l'emplacement par défaut : ${REPO_PATH}${NC}"
+    fi
+fi
+
+# Si le dépôt n'est toujours pas trouvé, demande à l'utilisateur
+if [ -z "$REPO_PATH" ]; then
     echo -e "${RED}Erreur : Le répertoire '$REPO_NAME' est introuvable ni à l'emplacement actuel ni à l'emplacement par défaut (${DEFAULT_REPO_PATH}).${NC}"
     read -p "Voulez-vous entrer le chemin **complet** du dossier '$REPO_NAME' manuellement ? (o/n) : " confirm
     if [[ "$confirm" == "o" || "$confirm" == "O" ]]; then
         read -p "Veuillez entrer le chemin **complet** du dossier '$REPO_NAME' (ex: /sdcard/Hashish) : " CUSTOM_REPO_PATH
-        if [ -n "$CUSTOM_REPO_PATH" ]; then
+        if [ -n "$CUSTOM_REPO_PATH" ] && [ -d "$CUSTOM_REPO_PATH" ]; then
             REPO_PATH="$CUSTOM_REPO_PATH"
-            echo -e "${INFO}Nouveau chemin du dépôt: ${REPO_PATH}${NC}"
+            echo -e "${GREEN}Chemin du dépôt '${REPO_NAME}' défini manuellement : ${REPO_PATH}${NC}"
         else
-            echo -e "${RED}Installation annulée. Le chemin du dépôt est nécessaire.${NC}"
+            echo -e "${RED}Chemin invalide ou dossier introuvable. Installation annulée.${NC}"
             exit 1
         fi
     else
         echo -e "${RED}Installation annulée. Impossible de trouver le dossier du dépôt.${NC}"
         exit 1
     fi
+else
+    echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à : ${REPO_PATH}${NC}\n"
 fi
+
 
 # Définition des répertoires d'installation cibles
 INSTALL_DIR="/data/data/com.termux/files/usr/bin"
@@ -85,30 +104,20 @@ MODULES_TARGET_DIR="$INSTALL_DIR/modules"
 WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists"
 
 # --- Vérification et Installation des Prérequis Système ---
-echo -e "${BLUE}Vérification et installation des prérequis système (build-essential, openssl, ncurses-utils)...${NC}"
-
-# Fonction d'aide pour installer un paquet Termux
-install_package() {
-    local package_name=$1
-    echo -e "${INFO}Installation du paquet Termux : ${package_name}...${NC}"
-    if pkg install "$package_name" -y; then
-        echo -e "${GREEN}Paquet '${package_name}' installé avec succès.${NC}"
-        return 0
-    else
-        echo -e "${RED}Échec de l'installation du paquet '${package_name}'. Veuillez vérifier votre connexion ou les dépôts Termux.${NC}"
-        return 1
-    fi
-}
+echo -e "${BLUE}Vérification et installation des prérequis système...${NC}"
 
 # Liste des paquets essentiels pour Termux
+# Ajout de 'python' et 'git' qui sont souvent nécessaires.
+# Ajout de 'rsync' pour une copie plus efficace.
 REQUIRED_PKGS=("clang" "build-essential" "openssl" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
 
 # Parcours et installe les paquets manquants
 for pkg_name in "${REQUIRED_PKGS[@]}"; do
+    # dpkg -s est plus fiable que command -v pour vérifier l'installation de paquets Termux
     if ! dpkg -s "$pkg_name" &>/dev/null; then
         echo -e "${YELLOW}Paquet '${pkg_name}' non trouvé. Installation de '${pkg_name}'...${NC}"
-        install_package "$pkg_name" || { 
-            echo -e "${RED}Installation annulée. Le paquet '${pkg_name}' est nécessaire.${NC}"
+        install_package "$pkg_name" || {
+            echo -e "${RED}Installation annulée. Le paquet '${pkg_name}' est nécessaire et n'a pas pu être installé.${NC}"
             exit 1
         }
     else
@@ -125,7 +134,7 @@ else
   echo -e "${GREEN}Compilateur g++ est maintenant disponible.${NC}"
 fi
 
-# Attribution des permissions d'exécution à la commande 'clear'
+# Attribution des permissions d'exécution à la commande 'clear' si elle existe
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear
@@ -182,14 +191,17 @@ echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 # --- Copie des Modules Python ---
 echo -e "${BLUE}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MODULES_TARGET_DIR/'...${NC}"
 if command -v rsync &> /dev/null; then
-    echo -e "${INFO}Utilisation de rsync pour copier les modules Python...${NC}"
-    # rsync pour exclure les wordlists et ne copier que les .py et les sous-dossiers vides
-    rsync -av --exclude 'wordlists/' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
+    echo -e "${INFO}Utilisation de rsync pour copier les modules Python (hors wordlists)...${NC}"
+    # rsync pour exclure les wordlists et ne copier que les .py et les sous-dossiers
+    # Correction : --include='*/' pour les sous-dossiers, --exclude='*' pour tout le reste non explicitement inclus
+    rsync -av --include='*.py' --include='*/' --exclude='wordlists/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
-    echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement (fallback)...${NC}"
+    echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement et des sous-dossiers (fallback)...${NC}"
     # Fallback si rsync n'est pas disponible
+    # Copie les fichiers .py directement dans le dossier cible des modules
     find "$REPO_PATH/modules/" -maxdepth 1 -name "*.py" -exec cp {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true
 
+    # Copie les sous-dossiers (sauf 'wordlists')
     for dir in "$REPO_PATH/modules"/*/; do
         dir_name=$(basename "$dir")
         if [ "$dir_name" != "wordlists" ]; then
@@ -205,7 +217,12 @@ echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.
 # --- Copie des Wordlists ---
 echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
 if [ -d "$REPO_PATH/wordlists" ]; then
-    cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
+    # Utilisation de rsync si disponible pour une copie plus robuste et incrémentale
+    if command -v rsync &> /dev/null; then
+        rsync -av "$REPO_PATH/wordlists/" "$WORDLISTS_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie avec rsync.${NC}"; }
+    else
+        cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
+    fi
     echo -e "${GREEN}Wordlists par défaut copiées avec succès vers ${WORDLISTS_TARGET_DIR}.${NC}\n"
 else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
@@ -218,21 +235,21 @@ CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Liste des fichiers C++ à cor
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
-        # Utilisation d'un délimiteur différent (par exemple '#') pour sed pour éviter les conflits avec '/' ou '{}'
-        # et s'assurer que les retours à la ligne sont bien interprétés.
-        # Le 'N' doit être répété suffisamment de fois pour charger toutes les lignes nécessaires dans le tampon de sed.
-        # Ici, 9 lignes (1 + 8 N) sont nécessaires pour charger la section avant de faire le remplacement.
-        # J'utilise une syntaxe plus robuste pour le remplacement de sed, en utilisant '\' pour les sauts de ligne.
+        # Utilisation de sed pour corriger la fonction. On utilise un autre délimiteur '#' pour éviter les problèmes avec les '/'
+        # On s'assure que le motif à remplacer est bien présent avant d'appliquer la correction.
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
-            sed -i 's|std::string reduced_string = "";\n.*std::seed_seq seed_sequence(hash.begin(), hash.end());|std::string reduced_string = "";\n\
-    std::vector<unsigned int> seed_data;\n\
-    for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\n\
-    seed_data.push_back(static_cast<unsigned int>(r_index));\n\n\
-    std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());|g' "$file"
+            # Utilisation de \x0A pour le saut de ligne dans sed, pour une meilleure compatibilité.
+            sed -i "s|std::string reduced_string = \"\";\x0A.*std::seed_seq seed_sequence(hash.begin(), hash.end());|std::string reduced_string = \"\";\x0A\
+    std::vector<unsigned int> seed_data;\x0A\
+    for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\x0A\
+    seed_data.push_back(static_cast<unsigned int>(r_index));\x0A\x0A\
+    std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());|g" "$file"
             echo -e "${GREEN}Correction appliquée à $file.${NC}"
         else
             echo -e "${INFO}La correction de $file ne semble pas nécessaire (déjà appliquée ou motif non trouvé).${NC}"
         fi
+    else
+        echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé. Aucune correction appliquée.${NC}"
     fi
 done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
@@ -241,7 +258,7 @@ echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 echo -e "${BLUE}Vérification et attribution des permissions d'écriture pour le dossier des modules C++ source...${NC}"
 if [ -d "$REPO_PATH/modules" ]; then
     # chmod +w pour le propriétaire. Si d'autres utilisateurs doivent écrire, considérer 'o+w' ou 'a+w'.
-    chmod +w "$REPO_PATH/modules" || { echo -e "${RED}Erreur : Impossible de donner les permissions d'écriture à $REPO_PATH/modules. Vérifiez si vous êtes propriétaire ou exécutez avec des privilèges suffisants.${NC}"; exit 1; }
+    chmod u+w "$REPO_PATH/modules" || { echo -e "${RED}Erreur : Impossible de donner les permissions d'écriture à $REPO_PATH/modules. Vérifiez si vous êtes propriétaire ou exécutez avec des privilèges suffisants.${NC}"; exit 1; }
     echo -e "${GREEN}Permissions d'écriture accordées à $REPO_PATH/modules.${NC}\n"
 else
     echo -e "${RED}Erreur : Le dossier '$REPO_PATH/modules' n'existe pas. Impossible de définir les permissions pour la compilation.${NC}"
@@ -259,10 +276,11 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
 
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les options pour Termux...${NC}"
-  
+
   # Commande de compilation correcte pour le code C++ fourni
-  # Exécution directe de la commande g++ pour éviter les problèmes de parsing de variable
-  COMPILATION_CMD="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic"
+  # Ajout de -I/data/data/com.termux/files/usr/include pour s'assurer que les en-têtes OpenSSL sont trouvés
+  # Ajout de -L/data/data/com.termux/files/usr/lib pour s'assurer que les bibliothèques OpenSSL sont trouvées
+  COMPILATION_CMD="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic -I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
   echo -e "${CYAN}Commande de compilation : ${COMPILATION_CMD}${NC}"
 
   # Exécution de la commande de compilation
@@ -312,16 +330,19 @@ echo ""
 RAINBOW_GENERATOR_OLD_EXECUTABLE="$MODULES_TARGET_DIR/rainbow_generator"
 if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
     echo -e "${BLUE}Nettoyage de l'ancien exécutable rainbow_generator...${NC}"
-    rm "$RAINBOW_GENERATOR_OLD_EXECUTABLE" || { echo -e "${YELLOW}Avertissement : Impossible de supprimer l'ancien rainbow_generator.cpp exécutable. Veuillez le supprimer manuellement si nécessaire.${NC}"; }
+    rm "$RAINBOW_GENERATOR_OLD_EXECUTABLE" || { echo -e "${YELLOW}Avertissement : Impossible de supprimer l'ancien rainbow_generator. Veuillez le supprimer manuellement si nécessaire.${NC}"; }
     echo -e "${GREEN}Ancien rainbow_generator supprimé.${NC}\n"
 fi
 
 # --- Vérification et Création du Fichier rainbow.txt ---
 RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt"
 echo -e "${BLUE}Vérification et création du fichier rainbow.txt...${NC}"
+# Assurons-nous que le répertoire cible existe avant de créer le fichier
+mkdir -p "$(dirname "$RAINBOW_TXT_PATH")" || { echo -e "${RED}Erreur: Impossible de créer le répertoire pour rainbow.txt. Vérifiez les permissions.${NC}"; }
+
 if [ ! -f "$RAINBOW_TXT_PATH" ]; then
-    touch "$RAINBOW_TXT_PATH" || { echo -e "${RED}Erreur: Impossible de créer le fichier rainbow.txt à $RAINBOW_TXT_PATH. Vérifiez les permissions.${NC}"; }
-    echo -e "${GREEN}Fichier rainbow.txt créé (ou déjà existant) à $RAINBOW_TXT_PATH.${NC}\n"
+    touch "$RAINBOW_TXT_PATH" || { echo -e "${RED}Erreur: Impossible de créer le fichier rainbow.txt à $RAINBOW_TXT_PATH. Vérifiez les permissions.${NC}"; exit 1; }
+    echo -e "${GREEN}Fichier rainbow.txt créé à $RAINBOW_TXT_PATH.${NC}\n"
 else
     echo -e "${GREEN}Fichier rainbow.txt déjà existant à $RAINBOW_TXT_PATH.${NC}\n"
 fi
@@ -376,21 +397,25 @@ if [ -f "$REPO_PATH/requirements.txt" ]; then
     # Vérifie si pip est installé, sinon tente de l'installer
     if ! command -v pip &> /dev/null; then
         echo -e "${YELLOW}pip n'est pas trouvé. Tentative d'installation de 'python-pip'...${NC}"
-        install_package "python-pip" || { echo -e "${RED}Impossible d'installer pip. Veuillez l'installer manuellement (pkg install python-pip).${NC}"; }
+        # 'python-pip' est le paquet Termux pour pip
+        install_package "python-pip" || {
+            echo -e "${RED}Impossible d'installer pip via pkg. Veuillez l'installer manuellement (pkg install python-pip) et relancer le script.${NC}";
+        }
     fi
 
-    # Si pip est disponible, installe les dépendances
+    # Si pip est disponible après les vérifications/tentatives d'installation
     if command -v pip &> /dev/null; then
+        echo -e "${INFO}Installation des dépendances Python via pip...${NC}"
         if pip install -r "$REPO_PATH/requirements.txt"; then
             echo -e "${GREEN}Dépendances Python installées avec succès.${NC}\n"
         else
-            echo -e "${RED}Erreur: Impossible d'installer les dépendances Python.${NC}"
-            echo -e "${YELLOW}Veuillez vérifier $REPO_PATH/requirements.txt, votre connexion Internet, ou essayez 'pip install --upgrade pip'.${NC}"
+            echo -e "${RED}Erreur: Impossible d'installer les dépendances Python via pip.${NC}"
+            echo -e "${YELLOW}Veuillez vérifier '$REPO_PATH/requirements.txt', votre connexion Internet, ou essayez 'pip install --upgrade pip'.${NC}"
             echo -e "${YELLOW}Vous pouvez essayer de les installer manuellement plus tard avec 'pip install -r $REPO_PATH/requirements.txt'.${NC}\n"
         fi
     else
         echo -e "${RED}Erreur: pip n'est pas disponible. Impossible d'installer les dépendances Python.${NC}"
-        echo -e "${YELLOW}Veuillez l'installer manuellement et les dépendances si nécessaire.${NC}\n"
+        echo -e "${YELLOW}Veuillez l'installer manuellement (pkg install python-pip) et les dépendances si nécessaire.${NC}\n"
     fi
 else
     echo -e "${YELLOW}Fichier 'requirements.txt' introuvable. Aucune dépendance Python à installer.${NC}\n"
