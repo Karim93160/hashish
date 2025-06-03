@@ -17,7 +17,7 @@
 </div>
 
 ![GitHub Gif](https://github.com/Karim93160/Dark-Web/blob/1ac92f41e1878d3e101b6177d0ca3249896d21fd/Screen_Recording_20250603_234629_Termux-ezgif.com-video-to-gif-converter.gif)
-[![Versión](https://img.shields.io/badge/Versión-5.5-blue.svg)](https://github.com/Karim93160/wazabi)
+[![Versión](https://img.shields.io/badge/Versión-5.5.1-blue.svg)](https://github.com/Karim93160/wazabi)
 [![Licencia](https://img.shields.io/badge/Licencia-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Mantenimiento](https://img.shields.io/badge/Mantenido-Sí-green.svg?style=flat-square)](https://github.com/YOUR_GITHUB_USERNAME/hashish/commits/main)
 [![Plataforma](https://img.shields.io/badge/Plataforma-Termux%20%7C%20Linux-lightgrey.svg?style=flat-square)](https://termux.com/)
