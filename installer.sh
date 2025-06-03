@@ -97,11 +97,11 @@ MODULES_TARGET_DIR="$INSTALL_DIR/modules"
 WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists"
 
 # --- Vérification et Installation des Prérequis Système ---
-echo -e "${BLUE}Vérification et installation des prérequis système (clang, build-essential, openssl, git, python, etc.)...${NC}"
+echo -e "${BLUE}Vérification et installation des prérequis système (clang, openssl, git, python, etc.)...${NC}"
 
 # Liste des paquets essentiels pour Termux
-# Inclut des paquets clés pour la compilation C++ comme `clang` et `openssl`
-REQUIRED_PKGS=("clang" "build-essential" "openssl" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
+# Remplacer build-essential par clang car Termux utilise clang/llvm
+REQUIRED_PKGS=("clang" "openssl" "openssl-tool" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils" "libomp") # Ajout de libomp pour OpenMP
 
 for pkg_name in "${REQUIRED_PKGS[@]}"; do
     if ! dpkg -s "$pkg_name" &>/dev/null; then
@@ -115,13 +115,13 @@ for pkg_name in "${REQUIRED_PKGS[@]}"; do
     fi
 done
 
-# Vérification spécifique de g++ après l'installation de build-essential
-if ! command -v g++ &> /dev/null; then
-  echo -e "${RED}Erreur : Le compilateur g++ n'est pas disponible. Impossible de compiler les modules C++.${NC}"
-  echo -e "${YELLOW}Veuillez vérifier manuellement l'installation de 'build-essential' et relancer.${NC}"
+# Vérification spécifique du compilateur (clang++ est l'équivalent de g++ sur Termux)
+if ! command -v clang++ &> /dev/null; then
+  echo -e "${RED}Erreur : Le compilateur clang++ n'est pas disponible. Impossible de compiler les modules C++.${NC}"
+  echo -e "${YELLOW}Veuillez vérifier manuellement l'installation de 'clang' et relancer.${NC}"
   exit 1
 else
-  echo -e "${GREEN}Compilateur g++ est maintenant disponible.${NC}"
+  echo -e "${GREEN}Compilateur clang++ est maintenant disponible.${NC}"
 fi
 
 # Attribution des permissions d'exécution à la commande 'clear' si elle existe (pour la robustesse du lanceur)
@@ -193,28 +193,31 @@ fi
 echo -e "${BLUE}Pré-traitement : Correction des fonctions 'reduce_hash' et PATH_MAX dans les fichiers C++...${NC}"
 
 CPP_SOURCE_FILES=("$REPO_PATH/modules/hashcracker.cpp" "$REPO_PATH/modules/rainbow_generator.cpp")
-REDUCTION_SED_PATTERN='std::string reduced_string = "";\n\
-    std::vector<unsigned int> seed_data;\n\
-    for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\n\
-    seed_data.push_back(static_cast<unsigned int>(r_index));\n\n\
+# Pattern pour la correction de reduce_hash
+# Utilise un délimiteur différent pour sed (e.g., #) pour éviter les problèmes avec les slashes et les accolades
+REDUCTION_SED_PATTERN='std::string reduced_string = "";\\n\
+    std::vector<unsigned int> seed_data;\\n\
+    for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\\n\
+    seed_data.push_back(static_cast<unsigned int>(r_index));\\n\\n\
     std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());'
-OLD_SEED_SEQ_PATTERN='std::string reduced_string = "";\n\
-    std::seed_seq seed_sequence(hash.begin(), hash.end());'
 
 for file in "${CPP_SOURCE_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Traitement de $file...${NC}"
         # Correction de la fonction 'reduce_hash'
-        if grep -qF "seed_sequence(hash.begin(), hash.end());" "$file"; then
-            sed -i "s#${OLD_SEED_SEQ_PATTERN}#${REDUCTION_SED_PATTERN}#g" "$file"
-            echo -e "${GREEN}Correction de 'reduce_hash' appliquée à $file.${NC}"
+        # Assurez-vous que le motif à remplacer est bien celui attendu dans vos fichiers.
+        # Ce `sed` est plus précis pour le pattern que vous avez montré qui est `std::seed_seq seed_sequence(hash.begin(), hash.end());`
+        if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
+             sed -i "s#std::seed_seq seed_sequence(hash.begin(), hash.end());#${REDUCTION_SED_PATTERN}#g" "$file"
+             echo -e "${GREEN}Correction de 'reduce_hash' appliquée à $file.${NC}"
         else
             echo -e "${INFO}Correction de 'reduce_hash' non nécessaire (motif non trouvé ou déjà appliqué) dans $file.${NC}"
         fi
 
         # Ajout de PATH_MAX si non présent (utile pour des fonctions comme realpath)
         if ! grep -q "#define PATH_MAX" "$file"; then
-            sed -i '1s/^/#ifndef PATH_MAX\n#define PATH_MAX 4096\n#endif\n/' "$file"
+            # Insère au début du fichier
+            sed -i '1s/^/#ifndef PATH_MAX\n#define PATH_MAX 4096\n#endif\n\n/' "$file"
             echo -e "${GREEN}Ajout de #define PATH_MAX à $file.${NC}"
         else
             echo -e "${INFO}PATH_MAX déjà défini dans $file.${NC}"
@@ -242,18 +245,26 @@ compile_cpp_module() {
     local temp_executable=$2
     local final_executable=$3
     local module_name=$(basename "$source_file" .cpp)
-    local compilation_flags="-O3 -lssl -lcrypto -std=c++17 -Wall -pedantic -I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
 
-    # Ajout de -fopenmp si le module l'utilise (par exemple hashcracker)
+    # Flags de compilation spécifiques à Termux avec clang++
+    # Inclut les chemins d'en-tête et de bibliothèques Termux pour OpenSSL et autres
+    local base_compilation_flags="-O3 -std=c++17 -Wall -pedantic"
+    local includes_libs="-I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
+    local common_link_libs="-lssl -lcrypto -lpthread -lm" # -lpthread et -lm sont importants pour la robustesse
+
+    local compilation_flags="$base_compilation_flags $includes_libs $common_link_libs"
+
+    # Ajout de -fopenmp si le module l'utilise (par exemple hashcracker.cpp)
     if [[ "$module_name" == "hashcracker" ]]; then
-        compilation_flags+=" -fopenmp"
+        compilation_flags+=" -lstdc++fs -fopenmp" # -lstdc++fs pour filesystem, -fopenmp pour OpenMP
     fi
 
     echo -e "${BLUE}Vérification et compilation du module C++ '${module_name}.cpp'...${NC}"
     if [ -f "$source_file" ]; then
         echo -e "${INFO}Fichier source C++ '${module_name}.cpp' trouvé : $source_file.${NC}"
         echo -e "${CYAN}Lancement de la compilation de $source_file vers $temp_executable...${NC}"
-        local compilation_cmd="g++ \"$source_file\" -o \"$temp_executable\" ${compilation_flags}"
+        # Utiliser clang++ au lieu de g++ pour une meilleure compatibilité Termux
+        local compilation_cmd="clang++ \"$source_file\" -o \"$temp_executable\" ${compilation_flags}"
         echo -e "${CYAN}Commande de compilation exécutée : ${compilation_cmd}${NC}"
 
         if eval "$compilation_cmd"; then
@@ -285,7 +296,7 @@ compile_cpp_module() {
         else
             echo -e "${RED}------------------------------------------------------------------${NC}"
             echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de ${module_name}.cpp.${NC}"
-            echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
+            echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de clang++ ci-dessus pour le diagnostic.${NC}"
             echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++ et sa compatibilité avec les versions d'OpenSSL de Termux.${NC}"
             echo -e "${RED}------------------------------------------------------------------${NC}"
             return 1 # Échec de compilation
