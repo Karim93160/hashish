@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import subprocess
+import itertools # Importation ajoutée pour cycle
 
 RESET = "\033[0m"
 BLACK = "\033[30m"
@@ -52,18 +53,38 @@ def clear_screen():
         print(CR_RED + f"[ERROR] Failed to clear screen: {e}. Check 'clear' command permissions." + RESET)
         time.sleep(1)
 
-def display_banner():
+def color_generator():
+    """Génère une séquence cyclique de couleurs pour l'animation."""
+    # Vous pouvez ajuster les couleurs ici pour l'animation
+    colors = [CR_CYAN, CR_GREEN, CR_YELLOW, CR_BLUE, CR_MAGENTA]
+    return itertools.cycle(colors)
+
+def animate_banner(delay=0.01):
+    """Anime l'affichage de la bannière avec des couleurs changeantes."""
     clear_screen()
     try:
         with open(BANNER_PATH, 'r') as f:
-            banner = f.read()
-            print(CR_CYAN + banner + RESET)
+            lines = f.readlines()
+            colors = color_generator()
+            for line in lines:
+                sys.stdout.write(next(colors) + line.rstrip() + RESET + "\n")
+                sys.stdout.flush() # Force l'affichage immédiat de la ligne
+                time.sleep(delay)
     except FileNotFoundError:
         print(CR_RED + "[ERROR] Banner file not found! " + BANNER_PATH + RESET)
         print(CR_RED + "         Please ensure 'banner-hashish.txt' is in the same directory as 'hashish.py'" + RESET)
         print(CR_RED + "         or in " + TERMUX_BIN_DIR + RESET)
         print(CR_YELLOW + "         Continuing without banner..." + RESET)
         time.sleep(2)
+    except Exception as e:
+        print(CR_RED + f"[ERROR] An error occurred during banner animation: {e}" + RESET)
+        time.sleep(2)
+
+
+def display_banner():
+    """Affiche la bannière animée."""
+    animate_banner() # Appel à la nouvelle fonction d'animation
+    time.sleep(0.5) # Un petit délai après l'animation complète de la bannière
 
 def check_executable(path):
     return os.path.isfile(path) and os.access(path, os.X_OK)
