@@ -1,26 +1,13 @@
 #!/bin/bash
 
 # Colors and effects
-R='\033[1;31m'  # Red
-G='\033[1;32m'  # Green
-Y='\033[1;33m'  # Yellow
-B='\033[1;34m'  # Blue
-M='\033[1;35m'  # Magenta
-C='\033[1;36m'  # Cyan
-W='\033[1;37m'  # White
-BL='\033[1;30m' # Black (dark gray)
-NC='\033[0m'    # Reset
+R='\033[1;31m'; G='\033[1;32m'; Y='\033[1;33m'; B='\033[1;34m'
+M='\033[1;35m'; C='\033[1;36m'; W='\033[1;37m'; BL='\033[1;30m'; NC='\033[0m'
+BOLD='\033[1m'; BLINK='\033[5m'
 
-# Special effects
-BOLD='\033[1m'
-BLINK='\033[5m'
-REVERSE='\033[7m'
-
-# Animation
+# Spinner animation
 spinner() {
-    local pid=$1
-    local delay=0.1
-    local spinstr='|/-\'
+    local pid=$1 delay=0.1 spinstr='|/-\'
     while ps -p $pid > /dev/null; do
         local temp=${spinstr#?}
         printf " [%c] " "$spinstr"
@@ -31,22 +18,15 @@ spinner() {
     printf "    \b\b\b\b"
 }
 
-# Function to print styled messages
+# Message formatting
 pretty_print() {
-    local color=$1
-    local effect=$2
-    local msg=$3
-    echo -e "${effect}${color}$msg${NC}"
+    echo -e "${2}${1}$3${NC}"
 }
 
-# Clear screen (using tput for better compatibility)
-clear_terminal() {
-    tput reset 2>/dev/null || clear
-}
+# Clear terminal
+clear; tput reset 2>/dev/null
 
-clear_terminal
-
-# ASCII Banner with colors - MAINTAINED EXACTLY AS PROVIDED
+# Banner
 echo -e "${C}${BOLD}"
 cat << "EOF"
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -64,12 +44,11 @@ cat << "EOF"
 ⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀
 EOF
 echo -e "${R}${BOLD}         __ HASHISH AUTOMATIC INSTALLER __ ${NC}"
-echo -e "${NC}"
 
 pretty_print $C $BOLD "\n  Initializing HASHISH system..."
 echo -e "${BL}=========================================================${NC}\n"
 
-# Repository detection
+# Path setup
 REPO_NAME="hashish"
 HOME_PATH="/data/data/com.termux/files/home"
 DEFAULT_REPO="$HOME_PATH/$REPO_NAME"
@@ -77,92 +56,55 @@ INSTALL_DIR="/data/data/com.termux/files/usr/bin"
 MODULES_DIR="$INSTALL_DIR/modules"
 WORDLISTS_DIR="$MODULES_DIR/wordlists"
 
-pretty_print $Y "" "  [1/6] Locating HASHISH repository..."
+pretty_print $Y "" "  [1/5] Locating HASHISH repository..."
 sleep 1
-
 if [[ -f "./hashish.py" ]]; then
     REPO_PATH=$(pwd)
 elif [[ -f "$DEFAULT_REPO/hashish.py" ]]; then
     REPO_PATH="$DEFAULT_REPO"
 else
-    pretty_print $R "" "  HASHISH not found in standard locations."
+    pretty_print $R "" "  HASHISH not found."
     read -p "  Enter full repository path: " REPO_PATH
-    if [[ ! -f "$REPO_PATH/hashish.py" ]]; then
-        pretty_print $R $BLINK "  ERROR: HASHISH repository not found!"
-        exit 1
-    fi
+    [[ ! -f "$REPO_PATH/hashish.py" ]] && pretty_print $R $BLINK "  ERROR: hashish.py not found!" && exit 1
 fi
-
 pretty_print $G "" "  ✓ Repository found: $REPO_PATH\n"
 
-# Install dependencies
-pretty_print $Y "" "  [2/6] Installing dependencies..."
-(
-    pkg update -y && \
-    pkg upgrade -y && \
-    pkg install -y clang openssl git python termux-tools
-) > /dev/null 2>&1 &
-spinner $!
-echo -e "${G}  ✓ Dependencies installed${NC}\n"
-
-# Prepare installation
-pretty_print $Y "" "  [3/6] Preparing installation..."
+# Install core files
+pretty_print $Y "" "  [2/5] Preparing directories and copying..."
 mkdir -p "$MODULES_DIR" "$WORDLISTS_DIR"
 cp "$REPO_PATH/hashish.py" "$INSTALL_DIR/"
-
-# Improved banner handling
-if [[ -f "$REPO_PATH/banner-hashish.txt" ]]; then
-    cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/"
-    chmod 644 "$INSTALL_DIR/banner-hashish.txt"
-    pretty_print $G "" "  ✓ Banner copied"
-else
-    pretty_print $Y "" "  ! Warning: banner-hashish.txt not found in repository"
-    pretty_print $Y "" "  Program will run without custom banner"
-fi
-
-# Copy all Python modules
+[[ -f "$REPO_PATH/banner-hashish.txt" ]] && cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/"
 find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/null
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
-echo -e "${G}  ✓ Files copied${NC}\n"
+pretty_print $G "" "  ✓ Files copied\n"
 
-# Compile modules
-pretty_print $Y "" "  [4/6] Compiling C++ modules..."
+# Compile C++ modules
+pretty_print $Y "" "  [3/5] Compiling modules..."
 (
-    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" \
-    -O3 -Wall -std=c++17 -I/data/data/com.termux/files/usr/include \
-    -L/data/data/com.termux/files/usr/lib -lssl -lcrypto -lpthread -lc++ -lc++_shared
-
-    clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" \
-    -O3 -Wall -std=c++17 -I/data/data/com.termux/files/usr/include \
-    -L/data/data/com.termux/files/usr/lib -lssl -lcrypto -lpthread -lc++ -lc++_shared
+    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
+    clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
 ) > /dev/null 2>&1 &
 spinner $!
-echo -e "${G}  ✓ Modules compiled${NC}\n"
+pretty_print $G "" "  ✓ Compilation finished\n"
 
-# Set permissions
-pretty_print $Y "" "  [5/6] Configuring permissions..."
+# Permissions
+pretty_print $Y "" "  [4/5] Setting permissions..."
 chmod -R +x "$MODULES_DIR"
 chmod +x "$INSTALL_DIR/hashish.py"
-echo -e "${G}  ✓ Permissions configured${NC}\n"
+pretty_print $G "" "  ✓ Permissions set\n"
 
-# Create launcher
-pretty_print $Y "" "  [6/6] Creating launcher..."
+# Launcher
+pretty_print $Y "" "  [5/5] Creating launcher..."
 cat > "$INSTALL_DIR/hashish" <<EOF
 #!/bin/bash
 exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
 chmod +x "$INSTALL_DIR/hashish"
-echo -e "${G}  ✓ Launcher created${NC}\n"
+pretty_print $G "" "  ✓ Launcher created\n"
 
-# Installation complete - Message to user
+# Final message
 echo -e "${BL}=========================================================${NC}"
-pretty_print $C $BOLD "\n  Installation complète!"
+pretty_print $C $BOLD "\n  Installation complète !"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
-pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
-sleep 3 # Laisse le temps de lire les messages de fin d'installation
-
-# --- START OF FIX ---
-# Instead of directly calling 'hashish', use 'exec' to replace the current shell
-# process with the hashish command. This ensures the new process inherits
-# the terminal's input/output correctly.
+sleep 2
 exec hashish
