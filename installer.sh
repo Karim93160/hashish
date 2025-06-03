@@ -27,7 +27,6 @@ spinner() {
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b"
-    C'
     done
     printf "    \b\b\b\b"
 }
@@ -50,19 +49,19 @@ clear_terminal
 # ASCII Banner with colors - MAINTAINED EXACTLY AS PROVIDED
 echo -e "${C}${BOLD}"
 cat << "EOF"
-        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣘⡘⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠇⡇⢱⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠳⡢⣄⠀⠀⠀⠀⠀⠀⢸⠄⡇⠸⠀⠀⠀⠀⠀⠀⢀⡤⡾⠁⠀⠀⠀
-        ⠀⠀⠀⠀⢹⣢⡉⠢⡀⠀⠀⠀⢸⠄⡇⢘⠃⠀⠀⠀⡠⠊⡑⣹⠁⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠱⡜⢄⠘⢢⡀⠀⢸⠁⡇⢸⡄⠀⣠⠊⢀⠌⡴⠁⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠱⡀⠡⡀⠑⡄⠸⠄⡇⢸⠀⡔⠁⡐⠁⡲⠁⠀⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠀⠈⢢⡈⢂⠘⡜⡇⡇⣘⡜⠠⠊⣠⠊⠀⠀⠀⠀⠀⠀⠀⠀
-v⠲⢖⡯⠘⣀⠒⠂⠤⢽⡦⡑⠜⢏⠀⡟⠔⡡⣖⡡⠤⠰⠒⣒⠒⣒⣶⠖⠂
-        ⠀⠀⠀⠉⠓⠲⠅⣉⣀⡐⠠⠉⠊⣼⣼⡤⠚⠩⠀⠂⢀⣉⠰⠔⠒⠉⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡌⡻⢹⡜⡟⢯⡩⣛⢭⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠀⣠⣾⣳⠥⠒⠁⠀⡇⠀⠙⠲⢕⣞⣦⡀⠀⠀⠀⠀⠀⠀⠀
-        ⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣘⡘⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠇⡇⢱⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠳⡢⣄⠀⠀⠀⠀⠀⠀⢸⠄⡇⠸⠀⠀⠀⠀⠀⠀⢀⡤⡾⠁⠀⠀⠀
+⠀⠀⠀⠀⢹⣢⡉⠢⡀⠀⠀⠀⢸⠄⡇⢘⠃⠀⠀⠀⡠⠊⡑⣹⠁⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠱⡜⢄⠘⢢⡀⠀⢸⠁⡇⢸⡄⠀⣠⠊⢀⠌⡴⠁⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠱⡀⠡⡀⠑⡄⠸⠄⡇⢸⠀⡔⠁⡐⠁⡲⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠈⢢⡈⢂⠘⡜⡇⡇⣘⡜⠠⠊⣠⠊⠀⠀⠀⠀⠀⠀⠀⠀
+⠑⠲⢖⡯⠘⣀⠒⠂⠤⢽⡦⡑⠜⢏⠀⡟⠔⡡⣖⡡⠤⠰⠒⣒⠒⣒⣶⠖⠂
+⠀⠀⠀⠉⠓⠲⠅⣉⣀⡐⠠⠉⠊⣼⣼⡤⠚⠩⠀⠂⢀⣉⠰⠔⠒⠉⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡌⡻⢹⡜⡟⢯⡩⣛⢭⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⣠⣾⣳⠥⠒⠁⠀⡇⠀⠙⠲⢕⣞⣦⡀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀
 EOF
 echo -e "${R}${BOLD}         __ HASHISH AUTOMATIC INSTALLER __ ${NC}"
 echo -e "${NC}"
@@ -151,6 +150,7 @@ cat > "$INSTALL_DIR/hashish" <<EOF
 #!/bin/bash
 exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
+# Le marqueur EOF ci-dessus DOIT être la seule chose sur sa ligne, sans espaces/tabs.
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${G}  ✓ Launcher created${NC}\n"
 
@@ -159,7 +159,7 @@ echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complète!"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
 
-# --- Nouvelle logique de lancement automatique ---
+# --- Logique de lancement automatique ---
 pretty_print $C $BOLD "\n  Lancement automatique de HASHISH dans 3 secondes..."
 sleep 3 # Donne au terminal le temps de se stabiliser
 
@@ -167,10 +167,4 @@ sleep 3 # Donne au terminal le temps de se stabiliser
 clear_terminal
 
 # Lance hashish de manière interactive
-# Utiliser `bash -c "hashish"` ou simplement `hashish` si $INSTALL_DIR est dans le PATH
-# La méthode la plus fiable est d'appeler l'exécutable Python avec le script directement
-# ou de s'assurer que le PATH est correctement mis à jour pour que `hashish` soit trouvé.
-# Pour Termux, $INSTALL_DIR (/data/data/com.termux/files/usr/bin) est généralement dans le PATH.
-# On peut aussi utiliser `command hashish` pour s'assurer qu'on utilise la commande shell.
 hashish
-# --- Fin de la nouvelle logique ---
