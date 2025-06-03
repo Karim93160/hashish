@@ -156,7 +156,6 @@ else
 fi
 
 # Attribution des permissions d'exécution à la commande 'clear' si elle existe (pour la robustesse du lanceur)
-# Cette étape est moins critique ici car `clear_screen` gère le cas où `clear` n'est pas directement exécutable.
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear &>/dev/null
     echo -e "${GREEN}Permissions d'exécution accordées à 'clear'.${NC}"
@@ -384,8 +383,10 @@ echo -e "${GREEN}Permissions d'exécution vérifiées et accordées pour les mod
 
 # --- Création d'un Script Exécutable Global ---
 echo -e "${BLUE}Création d'un script exécutable global 'hashish' dans ${INSTALL_DIR}...${NC}"
+# C'est ici que la modification cruciale pour l'entrée utilisateur se trouve !
 cat > "$INSTALL_DIR/hashish" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
+# Fonction pour effacer l'écran dans le lanceur
 clear_screen() {
     if command -v clear &>/dev/null; then
         clear
@@ -394,7 +395,7 @@ clear_screen() {
     fi
 }
 clear_screen # Appel de la fonction pour effacer l'écran au lancement de 'hashish'
-exec python3 "$INSTALL_DIR/hashish.py" "\$@"
+python3 "$INSTALL_DIR/hashish.py" "\$@" # MODIFICATION : On appelle python3 directement sans 'exec'
 EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${GREEN}Raccourci 'hashish' créé dans $INSTALL_DIR. Vous pouvez maintenant lancer l'outil avec la commande : ${CYAN}hashish${NC}\n"
