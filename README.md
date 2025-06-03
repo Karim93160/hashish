@@ -210,6 +210,18 @@ _________
   </p>
 </div>
 
+<div align="center">
+  <h2>🐞 Signaler un Bug dans Hashish 🐞</h2>
+  <p>
+    Rencontrez-vous un problème avec Hashish ? Aidez-nous à améliorer le projet en signalant les bugs !
+    Veuillez utiliser notre modèle de rapport de bug dédié pour nous fournir toutes les informations nécessaires.
+  </p>
+  <p>
+    <a href=".github/ISSUE_TEMPLATE/bug_report.md">
+      <img src="https://img.shields.io/badge/Signaler%20un%20Bug-Cliquez%20Ici-red?style=for-the-badge&logo=bugsnag" alt="Signaler un Bug">
+    </a>
+  </p>
+</div>
 
 **⚠️ Avertissement**
 
