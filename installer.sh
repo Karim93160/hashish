@@ -73,10 +73,13 @@ pretty_print "$G" "" "  ✓ Files copied\n"
 
 pretty_print "$Y" "" "  [3/5] Compiling modules..."
 (
-    # La ligne de compilation pour hashcracker.cpp a été mise à jour ici
+    # Compilation de hashcracker.cpp avec les options spécifiées.
+    # La redirection des erreurs est temporairement supprimée pour le débogage.
     clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -Wall -O3 -std=c++17 -fopenmp -lcrypto -lssl -lstdc++fs
+
+    # Compilation de rainbow_generator.cpp
     clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
-) > /dev/null 2>&1 &
+) & # Le `&` permet au spinner de s'afficher pendant la compilation.
 spinner $!
 pretty_print "$G" "" "  ✓ Compilation finished\n"
 
