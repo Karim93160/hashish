@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# ─────────────────────────────────────────────────────────
 # Colors and effects
 R='\033[1;31m'  # Red
 G='\033[1;32m'  # Green
@@ -8,29 +9,29 @@ B='\033[1;34m'  # Blue
 M='\033[1;35m'  # Magenta
 C='\033[1;36m'  # Cyan
 W='\033[1;37m'  # White
-BL='\033[1;30m' # Black (dark gray)
+BL='\033[1;30m' # Black (gray)
 NC='\033[0m'    # Reset
 
-# Special effects
 BOLD='\033[1m'
 BLINK='\033[5m'
-REVERSE='\033[7m'
 
-# Animation
+# ─────────────────────────────────────────────────────────
+# Spinner for background tasks
 spinner() {
     local pid=$1
     local delay=0.1
     local spinstr='|/-\'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+    while kill -0 "$pid" 2>/dev/null; do
         local temp=${spinstr#?}
         printf " [%c] " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
+        spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b"
     done
     printf "    \b\b\b\b"
 }
 
+# ─────────────────────────────────────────────────────────
 # Function to print styled messages
 pretty_print() {
     local color=$1
@@ -39,14 +40,12 @@ pretty_print() {
     echo -e "${effect}${color}$msg${NC}"
 }
 
-# Clear screen (using tput for better compatibility)
-clear_terminal() {
-    tput reset 2>/dev/null || clear
-}
+# ─────────────────────────────────────────────────────────
+# Clear screen (safe)
+tput reset 2>/dev/null || clear
 
-clear_terminal
-
-# ASCII Banner with colors - MAINTAINED EXACTLY AS PROVIDED
+# ─────────────────────────────────────────────────────────
+# Banner
 echo -e "${C}${BOLD}"
 cat << "EOF"
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -69,14 +68,16 @@ echo -e "${NC}"
 pretty_print $C $BOLD "\n  Initializing HASHISH system..."
 echo -e "${BL}=========================================================${NC}\n"
 
-# Repository detection
+# ─────────────────────────────────────────────────────────
+# Variables
 REPO_NAME="hashish"
-HOME_PATH="/data/data/com.termux/files/home"
+HOME_PATH="$HOME"
 DEFAULT_REPO="$HOME_PATH/$REPO_NAME"
 INSTALL_DIR="/data/data/com.termux/files/usr/bin"
 MODULES_DIR="$INSTALL_DIR/modules"
 WORDLISTS_DIR="$MODULES_DIR/wordlists"
 
+# ─────────────────────────────────────────────────────────
 pretty_print $Y "" "  [1/6] Locating HASHISH repository..."
 sleep 1
 
@@ -95,6 +96,7 @@ fi
 
 pretty_print $G "" "  ✓ Repository found: $REPO_PATH\n"
 
+# ─────────────────────────────────────────────────────────
 # Install dependencies
 pretty_print $Y "" "  [2/6] Installing dependencies..."
 (
@@ -105,45 +107,45 @@ pretty_print $Y "" "  [2/6] Installing dependencies..."
 spinner $!
 echo -e "${G}  ✓ Dependencies installed${NC}\n"
 
+# ─────────────────────────────────────────────────────────
 # Prepare installation
 pretty_print $Y "" "  [3/6] Preparing installation..."
 mkdir -p "$MODULES_DIR" "$WORDLISTS_DIR"
 cp "$REPO_PATH/hashish.py" "$INSTALL_DIR/"
 
-# Improved banner handling
 if [[ -f "$REPO_PATH/banner-hashish.txt" ]]; then
     cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/"
     chmod 644 "$INSTALL_DIR/banner-hashish.txt"
     pretty_print $G "" "  ✓ Banner copied"
 else
     pretty_print $Y "" "  ! Warning: banner-hashish.txt not found in repository"
-    pretty_print $Y "" "  Program will run without custom banner"
 fi
 
 find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/null
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 echo -e "${G}  ✓ Files copied${NC}\n"
 
+# ─────────────────────────────────────────────────────────
 # Compile modules
 pretty_print $Y "" "  [4/6] Compiling C++ modules..."
 (
     clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" \
-    -O3 -Wall -std=c++17 -I/data/data/com.termux/files/usr/include \
-    -L/data/data/com.termux/files/usr/lib -lssl -lcrypto -lpthread -lc++ -lc++_shared
+    -O3 -Wall -std=c++17 -I$PREFIX/include -L$PREFIX/lib -lssl -lcrypto -lpthread -lc++ -lc++_shared
 
     clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" \
-    -O3 -Wall -std=c++17 -I/data/data/com.termux/files/usr/include \
-    -L/data/data/com.termux/files/usr/lib -lssl -lcrypto -lpthread -lc++ -lc++_shared
+    -O3 -Wall -std=c++17 -I$PREFIX/include -L$PREFIX/lib -lssl -lcrypto -lpthread -lc++ -lc++_shared
 ) > /dev/null 2>&1 &
 spinner $!
 echo -e "${G}  ✓ Modules compiled${NC}\n"
 
-# Set permissions
+# ─────────────────────────────────────────────────────────
+# Permissions
 pretty_print $Y "" "  [5/6] Configuring permissions..."
 chmod -R +x "$MODULES_DIR"
 chmod +x "$INSTALL_DIR/hashish.py"
 echo -e "${G}  ✓ Permissions configured${NC}\n"
 
+# ─────────────────────────────────────────────────────────
 # Create launcher
 pretty_print $Y "" "  [6/6] Creating launcher..."
 cat > "$INSTALL_DIR/hashish" <<EOF
@@ -153,16 +155,14 @@ EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${G}  ✓ Launcher created${NC}\n"
 
-# Installation complete - Message to user
+# ─────────────────────────────────────────────────────────
+# Final message
 echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complète!"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
-pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
-sleep 3 # Laisse le temps de lire les messages de fin d'installation
+pretty_print $C $BOLD "  Lancement automatique de HASHISH..."
+sleep 3
 
-# --- START OF FIX ---
-# Instead of directly calling 'hashish', use 'exec' to replace the current shell
-# process with the hashish command. This ensures the new process inherits
-# the terminal's input/output correctly.
-exec hashish
-# --- END OF FIX ---
+# ─────────────────────────────────────────────────────────
+# Exécution finale
+"$INSTALL_DIR/hashish"
