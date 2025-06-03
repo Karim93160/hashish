@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import subprocess
-import itertools # Importation ajoutée pour cycle
+import itertools
 
 RESET = "\033[0m"
 BLACK = "\033[30m"
@@ -48,14 +48,22 @@ HASHCRACKER_CPP_EXECUTABLE = os.path.join(MODULES_PATH, "hashcracker")
 
 def clear_screen():
     try:
-        os.system('clear')
+        # Tente d'utiliser tput clear en premier, plus fiable pour certains terminaux
+        subprocess.run(['tput', 'clear'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Si tput n'est pas disponible ou échoue, utilise la méthode os.system
+        try:
+            os.system('clear')
+        except Exception as e:
+            print(CR_RED + f"[ERROR] Failed to clear screen: {e}. Check 'clear' command permissions." + RESET)
+            time.sleep(1)
     except Exception as e:
-        print(CR_RED + f"[ERROR] Failed to clear screen: {e}. Check 'clear' command permissions." + RESET)
+        print(CR_RED + f"[ERROR] Unexpected error while clearing screen: {e}" + RESET)
         time.sleep(1)
+
 
 def color_generator():
     """Génère une séquence cyclique de couleurs pour l'animation."""
-    # Vous pouvez ajuster les couleurs ici pour l'animation
     colors = [CR_CYAN, CR_GREEN, CR_YELLOW, CR_BLUE, CR_MAGENTA]
     return itertools.cycle(colors)
 
@@ -68,7 +76,7 @@ def animate_banner(delay=0.01):
             colors = color_generator()
             for line in lines:
                 sys.stdout.write(next(colors) + line.rstrip() + RESET + "\n")
-                sys.stdout.flush() # Force l'affichage immédiat de la ligne
+                sys.stdout.flush()
                 time.sleep(delay)
     except FileNotFoundError:
         print(CR_RED + "[ERROR] Banner file not found! " + BANNER_PATH + RESET)
@@ -83,8 +91,8 @@ def animate_banner(delay=0.01):
 
 def display_banner():
     """Affiche la bannière animée."""
-    animate_banner() # Appel à la nouvelle fonction d'animation
-    time.sleep(0.5) # Un petit délai après l'animation complète de la bannière
+    animate_banner()
+    time.sleep(0.5)
 
 def check_executable(path):
     return os.path.isfile(path) and os.access(path, os.X_OK)
