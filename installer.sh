@@ -211,7 +211,7 @@ if [ -d "$REPO_PATH/wordlists" ]; then
     else
         # cp -r gère la copie récursive. L'option 2>/dev/null supprime les messages d'erreur si le dossier est vide.
         cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || \
-            echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé ou erreur lors de la copie avec 'cp'. Certaines wordlists pourraient être manquantes.${NC}"
+            echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé ou erreur lors de la copie.${NC}"
     fi
     echo -e "${GREEN}Wordlists par défaut copiées avec succès vers ${WORDLISTS_TARGET_DIR}.${NC}\n"
 else
@@ -258,7 +258,6 @@ echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 # S'assurer que le dossier des modules source a les permissions d'écriture pour la compilation
 echo -e "${BLUE}Vérification et attribution des permissions d'écriture pour le dossier des modules C++ source (${REPO_PATH}/modules)...${NC}"
 if [ -d "$REPO_PATH/modules" ]; then
-    # chmod a+rw "$REPO_PATH/modules" # Ceci donnerait des permissions excessives.
     chmod u+w "$REPO_PATH/modules" || { echo -e "${RED}Erreur : Impossible de donner les permissions d'écriture à $REPO_PATH/modules. Vérifiez vos privilèges sur ce dossier.${NC}"; exit 1; }
     echo -e "${GREEN}Permissions d'écriture accordées à $REPO_PATH/modules.${NC}\n"
 else
@@ -273,7 +272,7 @@ compile_cpp_module() {
     local temp_executable=$2
     local final_executable=$3
     local module_name=$(basename "$source_file" .cpp)
-    local object_file="${source_file%.cpp}.o" # Nom du fichier objet
+    local object_file="${source_file%.cpp}.o" # Nom du fichier objet (pour le nettoyage)
 
     # Flags de compilation spécifiques à Termux avec clang++
     local base_compilation_flags="-O3 -Wall -pedantic"
@@ -284,15 +283,17 @@ compile_cpp_module() {
     # Initialisation des flags de compilation spécifiques
     local compilation_flags="$base_compilation_flags $includes_libs $common_link_libs"
 
-    # Ajout de -std=c++17 pour le support de filesystem (lstdc++fs)
-    # Ajout de -fopenmp si le module utilise OpenMP (ex: hashcracker.cpp)
+    # Gestion des drapeaux spécifiques par module
     if [[ "$module_name" == "hashcracker" ]]; then
-        compilation_flags+=" -std=c++17 -lstdc++fs -fopenmp"
+        # Pour le module hashcracker, qui utilise probablement std::filesystem (C++17) et OpenMP
+        # Remplacer -lstdc++fs par -lc++ pour la bibliothèque standard C++ de Termux (libc++)
+        # -lc++_shared est souvent nécessaire pour les liens dynamiques sur Termux/Android NDK
+        compilation_flags+=" -std=c++17 -lc++ -lc++_shared -fopenmp"
     elif [[ "$module_name" == "rainbow_generator" ]]; then
-        # rainbow_generator pourrait aussi bénéficier de c++17 si des fonctionnalités y sont utilisées
-        compilation_flags+=" -std=c++17"
+        # Pour rainbow_generator, qui pourrait aussi bénéficier de C++17
+        compilation_flags+=" -std=c++17 -lc++ -lc++_shared" # Ajout de -lc++ et -lc++_shared aussi pour rainbow_generator
     else
-        compilation_flags+=" -std=c++11" # Par défaut si pas de spécification
+        compilation_flags+=" -std=c++11 -lc++ -lc++_shared" # Par défaut si pas de spécification, avec libc++
     fi
 
     echo -e "${BLUE}Vérification et compilation du module C++ '${module_name}.cpp'...${NC}"
@@ -341,7 +342,7 @@ compile_cpp_module() {
         echo -e "${YELLOW}Le module ${module_name} C++ ne sera PAS disponible.${NC}"
         return 1 # Fichier source non trouvé
     fi
-    echo "" # Nouvelle ligne pour la clarté
+    echo "" # Nouvelle ligne pour la clartée
 }
 
 # Appel de la fonction de compilation pour chaque module
