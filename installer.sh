@@ -1,13 +1,17 @@
 #!/bin/bash
 
+# Définition des codes couleurs pour une sortie console plus lisible
 GREEN='\033[0;32m'
 NC='\033[0m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-INFO='\033[0;34m'
+INFO='\033[0;34m' # Bleu clair pour les informations
 
+# --- Fonctions Utilitaires ---
+
+# Fonction pour effacer l'écran, compatible avec 'clear' ou un équivalent ANSI
 clear_screen() {
     if command -v clear &>/dev/null; then
         clear
@@ -16,12 +20,15 @@ clear_screen() {
     fi
 }
 
+# Efface l'écran au début de l'exécution
 clear_screen
 
+# --- Bannière de Bienvenue ---
 echo -e "${CYAN}=======================================${NC}"
 echo -e "${CYAN}  Installation de HASHISH Ethical Toolkit${NC}"
 echo -e "${CYAN}=======================================${NC}\n"
 
+# --- Mise à Jour et Mise à Niveau de Termux ---
 echo -e "${BLUE}Mise à jour et mise à niveau des paquets Termux...${NC}"
 if pkg update -y && pkg upgrade -y; then
     echo -e "${GREEN}Termux paquets mis à jour et mis à niveau avec succès.${NC}\n"
@@ -30,6 +37,7 @@ else
     echo -e "${YELLOW}Veuillez vérifier votre connexion Internet et les dépôts, puis réessayez manuellement : 'pkg update && pkg upgrade'.${NC}\n"
 fi
 
+# --- Détection du Chemin du Dépôt ---
 REPO_NAME="hashish"
 DEFAULT_HOME_PATH="/data/data/com.termux/files/home"
 DEFAULT_REPO_PATH="$DEFAULT_HOME_PATH/$REPO_NAME"
@@ -37,6 +45,7 @@ DEFAULT_REPO_PATH="$DEFAULT_HOME_PATH/$REPO_NAME"
 CURRENT_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 REPO_PATH=""
 
+# Recherche du dossier 'hashish' en remontant l'arborescence
 temp_dir="$CURRENT_SCRIPT_DIR"
 while [[ "$temp_dir" != "/" && "$temp_dir" != "" ]]; do
     if [[ "$(basename "$temp_dir")" == "$REPO_NAME" ]]; then
@@ -46,6 +55,7 @@ while [[ "$temp_dir" != "/" && "$temp_dir" != "" ]]; do
     temp_dir=$(dirname "$temp_dir")
 done
 
+# Détermine le chemin final du dépôt
 if [ -n "$REPO_PATH" ]; then
     echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à partir de l'emplacement actuel : ${REPO_PATH}${NC}"
 elif [ -d "$DEFAULT_REPO_PATH" ]; then
@@ -69,12 +79,15 @@ else
     fi
 fi
 
+# Définition des répertoires d'installation cibles
 INSTALL_DIR="/data/data/com.termux/files/usr/bin"
 MODULES_TARGET_DIR="$INSTALL_DIR/modules"
 WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists"
 
+# --- Vérification et Installation des Prérequis Système ---
 echo -e "${BLUE}Vérification et installation des prérequis système (build-essential, openssl, ncurses-utils)...${NC}"
 
+# Fonction d'aide pour installer un paquet Termux
 install_package() {
     local package_name=$1
     echo -e "${INFO}Installation du paquet Termux : ${package_name}...${NC}"
@@ -88,10 +101,9 @@ install_package() {
 }
 
 # Liste des paquets essentiels pour Termux
-# build-essential inclut g++ et make
-# `libssl-dev` n'existe pas directement, `openssl` suffit pour la compilation dans Termux.
 REQUIRED_PKGS=("clang" "build-essential" "openssl" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
 
+# Parcours et installe les paquets manquants
 for pkg_name in "${REQUIRED_PKGS[@]}"; do
     if ! dpkg -s "$pkg_name" &>/dev/null; then
         echo -e "${YELLOW}Paquet '${pkg_name}' non trouvé. Installation de '${pkg_name}'...${NC}"
@@ -113,6 +125,7 @@ else
   echo -e "${GREEN}Compilateur g++ est maintenant disponible.${NC}"
 fi
 
+# Attribution des permissions d'exécution à la commande 'clear'
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear
@@ -124,6 +137,7 @@ echo ""
 
 echo -e "${GREEN}Prérequis système vérifiés et installés si nécessaire.${NC}\n"
 
+# --- Validation du Contenu du Dépôt ---
 echo -e "${BLUE}Validation du contenu du dépôt '${REPO_PATH}'...${NC}"
 if [ ! -d "$REPO_PATH" ]; then
   echo -e "${RED}Erreur : Le répertoire du dépôt '$REPO_NAME' n'existe pas à '${REPO_PATH}'.${NC}"
@@ -150,12 +164,14 @@ fi
 
 echo -e "${GREEN}Dépôt '$REPO_PATH' validé.${NC}\n"
 
+# --- Création des Dossiers Cibles ---
 echo -e "${BLUE}Création des dossiers cibles dans Termux...${NC}"
 mkdir -p "$INSTALL_DIR" || { echo -e "${RED}Erreur: Impossible de créer le dossier $INSTALL_DIR. Vérifiez les permissions.${NC}"; exit 1; }
 mkdir -p "$MODULES_TARGET_DIR" || { echo -e "${RED}Erreur: Impossible de créer le dossier $MODULES_TARGET_DIR. Vérifiez les permissions.${NC}"; exit 1; }
 mkdir -p "$WORDLISTS_TARGET_DIR" || { echo -e "${RED}Erreur: Impossible de créer le dossier $WORDLISTS_TARGET_DIR. Vérifiez les permissions.${NC}"; exit 1; }
 echo -e "${GREEN}Dossiers cibles créés.${NC}\n"
 
+# --- Copie des Fichiers Principaux ---
 echo -e "${BLUE}Copie de 'hashish.py' et 'banner-hashish.txt' vers ${INSTALL_DIR}...${NC}"
 cp "$REPO_PATH/hashish.py" "$INSTALL_DIR/hashish.py" || { echo -e "${RED}Erreur: Impossible de copier hashish.py. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
 cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/banner-hashish.txt" || { echo -e "${RED}Erreur: Impossible de copier banner-hashish.txt. Vérifiez les permissions ou l'existence du fichier source.${NC}"; exit 1; }
@@ -163,12 +179,15 @@ chmod +x "$INSTALL_DIR/hashish.py"
 chmod +r "$INSTALL_DIR/banner-hashish.txt"
 echo -e "${GREEN}Fichiers principaux copiés avec succès.${NC}\n"
 
+# --- Copie des Modules Python ---
 echo -e "${BLUE}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MODULES_TARGET_DIR/'...${NC}"
 if command -v rsync &> /dev/null; then
     echo -e "${INFO}Utilisation de rsync pour copier les modules Python...${NC}"
+    # rsync pour exclure les wordlists et ne copier que les .py et les sous-dossiers vides
     rsync -av --exclude 'wordlists/' --include='*.py' --include='*/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
     echo -e "${YELLOW}Avertissement : 'rsync' non trouvé. Copie des fichiers Python individuellement (fallback)...${NC}"
+    # Fallback si rsync n'est pas disponible
     find "$REPO_PATH/modules/" -maxdepth 1 -name "*.py" -exec cp {} "$MODULES_TARGET_DIR/" \; 2>/dev/null || true
 
     for dir in "$REPO_PATH/modules"/*/; do
@@ -181,6 +200,7 @@ else
 fi
 echo -e "${GREEN}Modules Python copiés avec succès vers ${MODULES_TARGET_DIR}.${NC}\n"
 
+# --- Copie des Wordlists ---
 echo -e "${BLUE}Copie des wordlists par défaut depuis '$REPO_PATH/wordlists/' vers '$WORDLISTS_TARGET_DIR/'...${NC}"
 if [ -d "$REPO_PATH/wordlists" ]; then
     cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_TARGET_DIR/" 2>/dev/null || { echo -e "${YELLOW}Avertissement : Aucun fichier de wordlist par défaut trouvé à copier ou erreur lors de la copie.${NC}"; }
@@ -189,13 +209,16 @@ else
     echo -e "${YELLOW}Avertissement : Le dossier des wordlists par défaut '$REPO_PATH/wordlists' est introuvable. Les wordlists par défaut ne seront pas installées.${NC}\n"
 fi
 
+# --- Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++ ---
 echo -e "${BLUE}Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++...${NC}"
 
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
+CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Liste des fichiers C++ à corriger
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
+        # Vérifie si la ligne à modifier existe avant de la remplacer
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
+            # Utilise sed pour remplacer la ligne, en ajoutant les lignes nécessaires
             sed -i '/std::string reduced_string = "";/{
                 N;N;N;N;N;N;N;N;N;
                 s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
@@ -211,10 +234,11 @@ std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
         fi
     else
         echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
-    fi # <-- Correction ici : ajout du 'fi' manquant
+    fi # <-- Correction ici : ajout du 'fi' manquant pour le 'if [ -f "$file" ]'
 done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
+# --- Compilation du Module C++ 'hashcracker.cpp' ---
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
 HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp"
 HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
@@ -225,12 +249,21 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
 
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les options pour Termux...${NC}"
+  
+  # Commande de compilation correcte pour le code C++ fourni
+  # -O3: Optimisation maximale
+  # -fopenmp: Support OpenMP pour le multithreading
+  # -lssl -lcrypto: Liaison avec les bibliothèques OpenSSL
+  # -std=c++17: Utilisation du standard C++17 (nécessaire pour <filesystem>)
+  # -Wall -pedantic: Active tous les avertissements et exige une conformité stricte au standard
   COMPILE_COMMAND="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic"
+
   echo -e "${CYAN}Commande de compilation : ${COMPILE_COMMAND}${NC}"
 
   if $COMPILE_COMMAND; then
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
+    # Vérifie si le dossier cible des modules existe avant de déplacer
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
         echo -e "${RED}Erreur: Le dossier cible des modules '$MODULES_TARGET_DIR' n'existe pas. Impossible de déplacer l'exécutable C++.${NC}"
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
@@ -240,6 +273,7 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
     echo -e "${INFO}Déplacement de l'exécutable compilé vers : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
     if mv "$HASHCRACKER_TEMP_EXECUTABLE" "$HASHCRACKER_FINAL_EXECUTABLE"; then
         echo -e "${GREEN}Exécutable C++ déplacé avec succès.${NC}"
+        # Rend l'exécutable exécutable
         if [ -f "$HASHCRACKER_FINAL_EXECUTABLE" ]; then
             chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
             echo -e "${GREEN}Permissions d'exécution accordées à $HASHCRACKER_FINAL_EXECUTABLE.${NC}"
@@ -268,6 +302,7 @@ else
 fi
 echo ""
 
+# --- Nettoyage de l'ancien exécutable rainbow_generator ---
 RAINBOW_GENERATOR_OLD_EXECUTABLE="$MODULES_TARGET_DIR/rainbow_generator"
 if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
     echo -e "${BLUE}Nettoyage de l'ancien exécutable rainbow_generator...${NC}"
@@ -275,6 +310,7 @@ if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
     echo -e "${GREEN}Ancien rainbow_generator supprimé.${NC}\n"
 fi
 
+# --- Vérification et Création du Fichier rainbow.txt ---
 RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt"
 echo -e "${BLUE}Vérification et création du fichier rainbow.txt...${NC}"
 if [ ! -f "$RAINBOW_TXT_PATH" ]; then
@@ -284,9 +320,10 @@ else
     echo -e "${GREEN}Fichier rainbow.txt déjà existant à $RAINBOW_TXT_PATH.${NC}\n"
 fi
 
+# --- Attribution des Permissions aux Modules ---
 echo -e "${BLUE}Attribution des permissions aux modules...${NC}"
 chmod +x "$REPO_PATH/hashish.py"
-chmod +x "$REPO_PATH/modules/hash_recon.cpp" 2>/dev/null || true
+chmod +x "$REPO_PATH/modules/hash_recon.cpp" 2>/dev/null || true # Ces fichiers ne sont pas compilés ici, mais c'est une bonne pratique de s'assurer
 chmod +x "$REPO_PATH/modules/hashcracker.cpp" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/rainbow_generator.cpp" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/web_scanner.py" 2>/dev/null || true
@@ -296,9 +333,11 @@ chmod +r "$REPO_PATH/modules/hash_recon.h" 2>/dev/null || true
 echo -e "${GREEN}Permissions accordées aux fichiers spécifiés dans le REPO_PATH.${NC}\n"
 echo -e "${GREEN}Note: Les permissions pour les fichiers copiés dans $INSTALL_DIR et $MODULES_TARGET_DIR sont définies séparément.${NC}\n"
 
+# --- Création d'un Script Exécutable Global ---
 echo -e "${BLUE}Création d'un script exécutable global...${NC}"
 cat > "$INSTALL_DIR/hashish" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
+# Fonction pour effacer l'écran dans le script de lancement
 clear_screen_func() {
     if command -v clear &>/dev/null; then
         clear
@@ -308,18 +347,22 @@ clear_screen_func() {
 }
 
 clear_screen_func
+# Exécute le script Python principal avec tous les arguments passés
 exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${GREEN}Raccourci 'hashish' créé dans $INSTALL_DIR. Vous pouvez maintenant lancer l'outil simplement en tapant 'hashish'.${NC}\n"
 
+# --- Installation des Dépendances Python ---
 echo -e "${BLUE}Installation des dépendances Python listées dans $REPO_PATH/requirements.txt...${NC}"
 if [ -f "$REPO_PATH/requirements.txt" ]; then
+    # Vérifie si pip est installé, sinon tente de l'installer
     if ! command -v pip &> /dev/null; then
         echo -e "${YELLOW}pip n'est pas trouvé. Tentative d'installation de 'python-pip'...${NC}"
         install_package "python-pip" || { echo -e "${RED}Impossible d'installer pip. Veuillez l'installer manuellement (pkg install python-pip).${NC}"; }
     fi
 
+    # Si pip est disponible, installe les dépendances
     if command -v pip &> /dev/null; then
         if pip install -r "$REPO_PATH/requirements.txt"; then
             echo -e "${GREEN}Dépendances Python installées avec succès.${NC}\n"
@@ -336,12 +379,14 @@ else
     echo -e "${YELLOW}Fichier 'requirements.txt' introuvable. Aucune dépendance Python à installer.${NC}\n"
 fi
 
+# --- Message de Fin d'Installation ---
 echo -e "${CYAN}=====================================================${NC}"
 echo -e "${GREEN}  Installation de HASHISH terminée avec succès ! 🚀 ${NC}"
 echo -e "${CYAN}=====================================================${NC}\n"
 echo -e "${GREEN}Vous pouvez maintenant lancer l'outil avec la commande : ${CYAN}hashish${NC}\n"
 echo -e "${BLUE}Pour tester, lancement de HASHISH (Appuyez sur Ctrl+C pour quitter)...${NC}"
 
+# Lance l'outil après l'installation
 if command -v hashish &> /dev/null; then
   hashish
 else
@@ -350,4 +395,4 @@ else
 fi
 
 echo -e "${CYAN}Merci d'avoir installé HASHISH. Bon travail !${NC}\n"
-exit 0
+exit 0 # Termine le script avec succès
