@@ -60,27 +60,6 @@ std::atomic<bool> g_hash_cracked_flag(false);
 std::string g_found_password;
 std::mutex g_cout_mutex;
 std::atomic<long long> g_total_attempts_bruteforce(0);
-std::atomic<bool> g_matrix_running(false);
-void run_matrix_animation() {
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::uniform_int_distribution<> dist(0, 100);
-    std::string chars = "0123456789ABCDEF";
-    std::uniform_int_distribution<> char_dist(0, chars.length() - 1);
-    while (g_matrix_running.load()) {
-        std::string line;
-        for (int i = 0; i < 40; ++i) {
-            if (dist(generator) < 80) {
-                line += CR_DARK_GRAY;
-            } else {
-                line += CR_GREEN;
-            }
-            line += chars[char_dist(generator)];
-        }
-        std::cout << line << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-}
 std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
@@ -248,6 +227,93 @@ std::string reduce_hash(const std::string& hash, size_t target_len, const std::s
     }
     return reduced_string;
 }
+
+void set_cursor_position(int x, int y) {
+    std::cout << "\033[" << y << ";" << x << "H";
+}
+
+void clear_line() {
+    std::cout << "\033[2K\r";
+}
+
+void display_loading_animation(const std::string& message, int duration_ms, int num_frames = 4) {
+    const std::vector<std::string> frames = {"-", "\\", "|", "/"};
+    std::cout << message << " ";
+    std::cout.flush();
+    auto start_time = std::chrono::high_resolution_clock::now();
+    int frame_index = 0;
+    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() < duration_ms) {
+        std::lock_guard<std::mutex> lock(g_cout_mutex);
+        clear_line();
+        std::cout << CR_DARK_GRAY << message << " " << frames[frame_index % num_frames] << RESET << std::flush;
+        frame_index++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms / (num_frames * 10)));
+    }
+    clear_line();
+    std::cout << CR_GREEN << message << " [DONE]" << RESET << std::endl;
+}
+
+void simulate_typing(const std::string& text, int delay_ms, bool new_line = true, bool bold = false) {
+    std::string color_code = CR_CYAN;
+    if (bold) {
+        color_code = BOLDWHITE;
+    }
+    std::cout << color_code;
+    for (char c : text) {
+        std::cout << c << std::flush;
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    }
+    std::cout << RESET;
+    if (new_line) {
+        std::cout << std::endl;
+    }
+}
+
+void draw_progress_bar(long long current, long double total, int width = 50, const std::string& prefix = "", const std::string& suffix = "") {
+    std::lock_guard<std::mutex> lock(g_cout_mutex);
+    clear_line();
+    if (total <= 0) {
+        std::cout << prefix << "[ERROR: Total attempts is 0]" << suffix << std::flush;
+        return;
+    }
+    double progress = static_cast<double>(current) / total;
+    int filled_width = static_cast<int>(width * progress);
+    std::cout << prefix << "[";
+    std::cout << CR_GREEN;
+    for (int i = 0; i < filled_width; ++i) {
+        std::cout << "#";
+    }
+    std::cout << CR_DARK_GRAY;
+    for (int i = filled_width; i < width; ++i) {
+        std::cout << "-";
+    }
+    std::cout << RESET;
+    std::cout << "] " << static_cast<int>(progress * 100.0) << "% " << suffix << std::flush;
+}
+
+void display_matrix_effect(int lines, int delay_ms) {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;':\",.<>/?`~";
+    for (int i = 0; i < lines; ++i) {
+        for (int j = 0; j < 80; ++j) {
+            int rand_char_idx = std::uniform_int_distribution<>(0, chars.length() - 1)(generator);
+            int color_choice = std::uniform_int_distribution<>(0, 10)(generator);
+            if (color_choice < 7) {
+                std::cout << CR_GREEN;
+            } else if (color_choice < 9) {
+                std::cout << FAINT << CR_DARK_GRAY;
+            } else {
+                std::cout << CR_WHITE;
+            }
+            std::cout << chars[rand_char_idx];
+        }
+        std::cout << RESET << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    }
+    std::cout << "\033[H\033[J";
+}
+
 void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* digest_type) {
     std::cout << "\n" << CR_BLUE << ">>> [SCANNING] Initiating Dictionary Attack..." << RESET << std::endl;
     std::cout << CR_DARK_GRAY << "    Target Hash   : " << target_hash << RESET << std::endl;
@@ -255,7 +321,7 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
     char choice;
     std::cout << CR_YELLOW << "\n Do you want to use the default wordlists (common.part.01 to common.part.10)?" << RESET << std::endl;
     std::cout << CR_CYAN << " (They should be in the 'wordlists/' directory relative to the executable)" << RESET << std::endl;
-    std::cout << CR_YELLOW << " Enter 'Y' for default, or 'N' to specify a custom wordlist path: > " << RESET;
+    simulate_typing(" Enter 'Y' for default, or 'N' to specify a custom wordlist path: > ", 10, false);
     std::cin >> choice;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::vector<std::string> wordlist_paths;
@@ -272,7 +338,7 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
             wordlist_paths.push_back(ss.str());
         }
     } else {
-        std::cout << CR_YELLOW << " [CUSTOM WORDLIST PATH] Enter full path to your wordlist > " << RESET;
+        simulate_typing(" [CUSTOM WORDLIST PATH] Enter full path to your wordlist > ", 10, false);
         std::getline(std::cin, wordlist_path_user);
         wordlist_paths.push_back(wordlist_path_user);
     }
@@ -300,9 +366,10 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
             }
             if (word.empty()) continue;
             total_attempts++;
-            if (total_attempts % 100000 == 0) {
+            if (total_attempts % 50000 == 0) {
                 std::lock_guard<std::mutex> lock(g_cout_mutex);
-                std::cout << "\r" << CR_YELLOW << "[PROGRESS] Dictionary: " << format_attempts(total_attempts) << " words scanned. Current word: " << word.substr(0, std::min((size_t)20, word.length())) << "..." << std::flush << RESET;
+                clear_line();
+                std::cout << CR_YELLOW << "[PROGRESS] Dictionary: " << format_attempts(total_attempts) << " words scanned. Current: " << word.substr(0, std::min((size_t)30, word.length())) << "..." << std::flush << RESET;
             }
             std::string current_hash = calculate_hash_openssl(word, digest_type);
             if (current_hash == target_hash) {
@@ -342,8 +409,8 @@ void generate_combinations_recursive_omp(
     if (current_combination.length() == target_length) {
         g_total_attempts_bruteforce++;
         if (g_total_attempts_bruteforce % 500000 == 0) {
-            std::lock_guard<std::mutex> cout_lock(g_cout_mutex);
-            std::cout << "\r" << CR_YELLOW << "[PROGRESS] Bruteforce: " << format_attempts(g_total_attempts_bruteforce) << " attempts. Testing: " << current_combination << std::flush << RESET;
+            long double estimated_max = calculate_max_attempts(charset.length(), target_length, target_length);
+            draw_progress_bar(g_total_attempts_bruteforce, estimated_max, 50, CR_YELLOW + "[BRUTEFORCE] ", " (" + current_combination.substr(0, std::min((size_t)10, current_combination.length())) + "...) " + RESET);
         }
         std::string hashed_attempt = calculate_hash_openssl(current_combination, digest_type);
         if (hashed_attempt == target_hash) {
@@ -394,7 +461,7 @@ void perform_bruteforce_attack(
     if (hashes_per_second <= 0) {
         std::cerr << CR_RED << "[ERROR] Benchmark failed or returned zero H/s. Cannot estimate time." << RESET << std::endl;
         char continue_without_estimation;
-        std::cout << CR_YELLOW << "Continue without time estimation? (y/n) > " << RESET;
+        simulate_typing("Continue without time estimation? (y/n) > ", 10, false);
         std::cin >> continue_without_estimation;
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         if (tolower(continue_without_estimation) != 'y') {
@@ -410,7 +477,7 @@ void perform_bruteforce_attack(
         std::cout << CR_MAGENTA << "             (This is an estimation and depends on CPU/GPU load and hash complexity)" << RESET << std::endl;
     }
     char confirm_choice;
-    std::cout << CR_YELLOW << "Do you want to proceed with the bruteforce attack? (y/n) > " << RESET;
+    simulate_typing("Do you want to proceed with the bruteforce attack? (y/n) > ", 10, false);
     std::cin >> confirm_choice;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     if (tolower(confirm_choice) != 'y') {
@@ -420,13 +487,11 @@ void perform_bruteforce_attack(
     g_total_attempts_bruteforce = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
     std::cout << CR_DARK_GRAY << "    Using " << num_threads_to_use << " threads." << RESET << std::endl;
-    g_matrix_running.store(true);
-    std::thread matrix_thread(run_matrix_animation);
     for (int len = min_len; len <= max_len; ++len) {
         if (g_hash_cracked_flag.load()) break;
         {
             std::lock_guard<std::mutex> lock(g_cout_mutex);
-            std::cout << "\r" << CR_CYAN << "[INFO] Testing passwords of length " << len << "..." << RESET << std::endl;
+            std::cout << "\n" << CR_CYAN << "[INFO] Testing passwords of length " << len << "..." << RESET << std::endl;
         }
         #ifdef _OPENMP
         #pragma omp parallel for shared(g_hash_cracked_flag, g_found_password, g_total_attempts_bruteforce, g_cout_mutex) schedule(dynamic) num_threads(num_threads_to_use)
@@ -443,11 +508,6 @@ void perform_bruteforce_attack(
             break;
         }
     }
-    g_matrix_running.store(false);
-    if (matrix_thread.joinable()) {
-        matrix_thread.join();
-    }
-    std::cout << "\033[H\033[J";
     if (!g_hash_cracked_flag.load()) {
         std::cout << "\r" << std::string(80, ' ') << "\r";
         std::cout << CR_YELLOW << "[INFO] Hash not cracked using bruteforce." << RESET << std::endl;
@@ -500,8 +560,6 @@ void generate_rainbow_table(
     std::uniform_int_distribution<> len_dist(min_len, max_len);
     auto start_time = std::chrono::high_resolution_clock::now();
     long long generated_chains_count = 0;
-    g_matrix_running.store(true);
-    std::thread matrix_thread(run_matrix_animation);
     for (long long i = 0; i < num_chains; ++i) {
         int current_len_for_reduction = len_dist(generator_initial_word);
         std::string start_word = "";
@@ -520,16 +578,10 @@ void generate_rainbow_table(
         outfile << start_word << ":" << current_hash_in_chain << "\n";
         generated_chains_count++;
         if (generated_chains_count % 1000 == 0) {
-            std::lock_guard<std::mutex> lock(g_cout_mutex);
-            std::cout << "\r" << CR_YELLOW << "[PROGRESS] Generated " << format_attempts(generated_chains_count) << "/" << format_attempts(num_chains) << " chains. Last word: " << start_word << std::flush << RESET;
+            draw_progress_bar(generated_chains_count, num_chains, 50, CR_YELLOW + "[GENERATION] ", " (" + start_word.substr(0, std::min((size_t)15, start_word.length())) + "...) " + RESET);
         }
     }
     outfile.close();
-    g_matrix_running.store(false);
-    if (matrix_thread.joinable()) {
-        matrix_thread.join();
-    }
-    std::cout << "\033[H\033[J";
     std::cout << "\r" << std::string(80, ' ') << "\r";
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
@@ -571,8 +623,6 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
     long long loaded_entries = 0;
     std::cout << CR_BLUE << "[LOADING] Loading rainbow table into memory. This may take a while for large tables..." << RESET << std::endl;
     auto load_start_time = std::chrono::high_resolution_clock::now();
-    g_matrix_running.store(true);
-    std::thread matrix_thread(run_matrix_animation);
     while (std::getline(rainbow_table_file, line)) {
         size_t colon_pos = line.find(':');
         if (colon_pos != std::string::npos) {
@@ -582,25 +632,19 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
             loaded_entries++;
             if (loaded_entries % 100000 == 0) {
                  std::lock_guard<std::mutex> lock(g_cout_mutex);
-                 std::cout << "\r" << CR_YELLOW << "[PROGRESS] Loaded " << format_attempts(loaded_entries) << " entries..." << std::flush << RESET;
+                 clear_line();
+                 std::cout << CR_YELLOW << "[LOADING] Loaded " << format_attempts(loaded_entries) << " entries..." << std::flush << RESET;
             }
         }
     }
     rainbow_table_file.close();
-    g_matrix_running.store(false);
-    if (matrix_thread.joinable()) {
-        matrix_thread.join();
-    }
-    std::cout << "\033[H\033[J";
+    std::cout << "\r" << std::string(80, ' ') << "\r";
     auto load_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> load_duration = load_end_time - load_start_time;
-    std::cout << "\r" << std::string(80, ' ') << "\r";
     std::cout << CR_GREEN << "[LOADED] Rainbow table loaded. " << format_attempts(loaded_entries) << " entries in " << std::fixed << std::setprecision(2) << load_duration.count() << " seconds." << RESET << std::endl;
     std::cout << CR_BLUE << "\n[CRACKING] Starting rainbow table lookup..." << RESET << std::endl;
     auto crack_start_time = std::chrono::high_resolution_clock::now();
     bool cracked = false;
-    g_matrix_running.store(true);
-    std::thread matrix_thread_crack(run_matrix_animation);
     for (int current_len_for_reduction = assumed_min_len; current_len_for_reduction <= assumed_max_len; ++current_len_for_reduction) {
         if (g_hash_cracked_flag.load()) break;
         for (int i = 0; i < chain_length; ++i) {
@@ -634,16 +678,10 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
                 if (cracked) break;
             }
             if (i % 100 == 0) {
-                std::lock_guard<std::mutex> lock(g_cout_mutex);
-                std::cout << "\r" << CR_YELLOW << "[PROGRESS] Rainbow: Checking position " << i << "/" << chain_length << " (len: " << current_len_for_reduction << ")..." << std::flush << RESET;
+                draw_progress_bar(i, chain_length, 50, CR_YELLOW + "[CRACKING] ", " (Pos: " + std::to_string(i) + "/" + std::to_string(chain_length) + ", Len: " + std::to_string(current_len_for_reduction) + ") " + RESET);
             }
         }
     }
-    g_matrix_running.store(false);
-    if (matrix_thread_crack.joinable()) {
-        matrix_thread_crack.join();
-    }
-    std::cout << "\033[H\033[J";
     std::cout << "\r" << std::string(100, ' ') << "\r";
     auto crack_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> crack_duration = crack_end_time - crack_start_time;
@@ -656,6 +694,7 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
 int main() {
     ERR_load_crypto_strings();
     OpenSSL_add_all_digests();
+    display_matrix_effect(10, 20);
     while (true) {
         std::cout << "\033[H\033[J";
         const int terminal_width = 80;
@@ -666,44 +705,48 @@ int main() {
         int subtitle_padding = (terminal_width - (std::string("by ") + subtitle).length()) / 2;
         std::cout << std::string(subtitle_padding, ' ') << CR_CYAN << "by " << FAINT ITALIC << subtitle << RESET << std::endl;
         std::cout << CR_BLUE << std::string(terminal_width, '=') << RESET << std::endl;
-        std::cout << CR_MAGENTA << "\n    [INFO] Welcome to Hashcracker-V.CPP! " << RESET << std::endl;
-        std::cout << CR_MAGENTA << "    [INFO] Your ultimate hash cracking and generation tool." << RESET << std::endl;
+        simulate_typing("   [INFO] INITIALIZING SECURE MODULES...", 30);
+        simulate_typing("   [INFO] Welcome to Hashcracker-V.CPP! ", 20);
+        simulate_typing("   [INFO] Your ultimate hash cracking and generation tool.", 20);
         std::cout << CR_BLUE << std::string(terminal_width, '=') << RESET << std::endl;
         std::string input_hash_hex;
-        std::cout << CR_YELLOW << "\n [TARGET HASH] Enter hash to crack (or 'exit' to quit) > " << RESET;
+        simulate_typing("\n [TARGET HASH] Enter hash to crack (or 'exit' to quit) > ", 15, false);
         std::cin >> input_hash_hex;
         std::transform(input_hash_hex.begin(), input_hash_hex.end(), input_hash_hex.begin(), ::tolower);
         if (input_hash_hex == "exit") {
             std::cout << CR_BLUE << "\n==========================================================" << RESET << std::endl;
-            std::cout << CR_CYAN << "  [GOODBYE] Exiting Hashcracker. See you soon! " << RESET << std::endl;
+            simulate_typing("  [GOODBYE] TERMINATING ALL PROCESSES. See you soon! ", 30, true, true);
             std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
             break;
         }
         std::string detected_type_str = detect_hash_type_str(input_hash_hex);
         const EVP_MD* digest_algo = get_openssl_digest_type(detected_type_str);
+        simulate_typing("   [ANALYSIS] Analyzing hash signature...", 20);
         std::cout << CR_DARK_GRAY << "   [ANALYSIS] Hash Type Detected: " << detected_type_str << RESET << std::endl;
         if (detected_type_str == "INCONNU" || digest_algo == nullptr) {
-            std::cerr << CR_RED << "[ERROR] Unknown or unsupported hash type. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
-            std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+            simulate_typing("[ERROR] Unknown or unsupported hash type. Supported: MD5, SHA1, SHA256, SHA384, SHA512.", 20, true, true);
+            simulate_typing("Press Enter to return to main menu...", 10);
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cin.get();
             continue;
         }
         std::cout << CR_BLUE << "\n--- [ATTACK SELECTION] --------------------------------" << RESET << std::endl;
-        std::cout << CR_CYAN << " 1. Dictionary Attack (Wordlist)" << RESET << std::endl;
-        std::cout << CR_CYAN << " 2. Bruteforce Attack (Character Set)" << RESET << std::endl;
-        std::cout << CR_CYAN << " 3. Rainbow Table Attack (Pre-calculated table)" << RESET << std::endl;
-        std::cout << CR_CYAN << " 4. Generate Rainbow Table" << RESET << std::endl;
+        simulate_typing(" 1. Dictionary Attack (Wordlist)", 10);
+        simulate_typing(" 2. Bruteforce Attack (Character Set)", 10);
+        simulate_typing(" 3. Rainbow Table Attack (Pre-calculated table)", 10);
+        simulate_typing(" 4. Generate Rainbow Table", 10);
         int attack_choice;
-        std::cout << CR_YELLOW << " [SELECT ATTACK (1/2/3/4)] > " << RESET;
+        simulate_typing(" [SELECT ATTACK (1/2/3/4)] > ", 15, false);
         std::cin >> attack_choice;
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         g_hash_cracked_flag.store(false);
         g_found_password = "";
         g_total_attempts_bruteforce = 0;
         if (attack_choice == 1) {
+            simulate_typing("\n>>> [MODULE ACTIVATED] Initiating Dictionary Attack Sequence...", 25, true, true);
             perform_dictionary_attack(input_hash_hex, digest_algo);
         } else if (attack_choice == 2) {
+            simulate_typing("\n>>> [MODULE ACTIVATED] Initiating Bruteforce Protocol...", 25, true, true);
             std::cout << CR_BLUE << "\n--- [BRUTEFORCE PARAMETERS] ---------------------------" << RESET << std::endl;
             std::map<int, std::pair<std::string, std::string>> predefined_charsets;
             predefined_charsets[1] = {"Lowercase letters (a-z)", "abcdefghijklmnopqrstuvwxyz"};
@@ -712,19 +755,19 @@ int main() {
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
             predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
-            std::cout << CR_CYAN << "   Choose a predefined charset or enter your own:" << RESET << std::endl;
+            simulate_typing("   Choose a predefined charset or enter your own:", 10);
             for (const auto& pair : predefined_charsets) {
-                std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
+                simulate_typing("   " + pair.first + ". " + pair.second.first, 5);
             }
-            std::cout << CR_CYAN << "   Or enter 'C' for Custom charset" << RESET << std::endl;
-            std::cout << CR_YELLOW << " [CHARACTER SET CHOICE] Enter choice (1-" << predefined_charsets.size() << " or C) > " << RESET;
+            simulate_typing("   Or enter 'C' for Custom charset", 10);
+            simulate_typing(" [CHARACTER SET CHOICE] Enter choice (1-" + std::to_string(predefined_charsets.size()) + " or C) > ", 15, false);
             std::string charset_choice_str;
             std::cin >> charset_choice_str;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::string charset_input;
             std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper);
             if (charset_choice_str == "C") {
-                std::cout << CR_YELLOW << " [CUSTOM CHARACTER SET] Enter your custom charset > " << RESET;
+                simulate_typing(" [CUSTOM CHARACTER SET] Enter your custom charset > ", 15, false);
                 std::getline(std::cin, charset_input);
             } else {
                 try {
@@ -746,24 +789,25 @@ int main() {
             }
             if (charset_input.empty()) {
                 std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot perform bruteforce." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             int min_l, max_l;
-            std::cout << CR_YELLOW << " [MIN LENGTH] Enter minimum password length > " << RESET;
+            simulate_typing(" [MIN LENGTH] Enter minimum password length > ", 15, false);
             std::cin >> min_l;
-            std::cout << CR_YELLOW << " [MAX LENGTH] Enter maximum password length > " << RESET;
+            simulate_typing(" [MAX LENGTH] Enter maximum password length > ", 15, false);
             std::cin >> max_l;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             if (min_l <= 0 || max_l < min_l) {
                 std::cerr << CR_RED << "[ERROR] Invalid length range. Min length > 0 and Max length >= Min length." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             perform_bruteforce_attack(input_hash_hex, digest_algo, charset_input, min_l, max_l);
         } else if (attack_choice == 3) {
+            simulate_typing("\n>>> [MODULE ACTIVATED] Deploying Rainbow Table Lookup...", 25, true, true);
             std::string base_path = get_executable_dir();
             if (!base_path.empty() && base_path.back() != std::filesystem::path::preferred_separator) {
                 base_path += std::filesystem::path::preferred_separator;
@@ -777,19 +821,19 @@ int main() {
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
             predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
-            std::cout << CR_CYAN << "   Choose the charset used during table generation:" << RESET << std::endl;
+            simulate_typing("   Choose the charset used during table generation:", 10);
             for (const auto& pair : predefined_charsets) {
-                std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
+                simulate_typing("   " + pair.first + ". " + pair.second.first, 5);
             }
-            std::cout << CR_CYAN << "   Or enter 'C' for Custom charset" << RESET << std::endl;
-            std::cout << CR_YELLOW << " [REDUCTION CHARSET CHOICE] Enter choice (1-" << predefined_charsets.size() << " or C) > " << RESET;
+            simulate_typing("   Or enter 'C' for Custom charset", 10);
+            simulate_typing(" [REDUCTION CHARSET CHOICE] Enter choice (1-" + std::to_string(predefined_charsets.size()) + " or C) > ", 15, false);
             std::string charset_choice_str_reduction;
             std::cin >> charset_choice_str_reduction;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::string reduction_charset;
             std::transform(charset_choice_str_reduction.begin(), charset_choice_str_reduction.end(), charset_choice_str_reduction.begin(), ::toupper);
             if (charset_choice_str_reduction == "C") {
-                std::cout << CR_YELLOW << " [CUSTOM REDUCTION CHARSET] Enter the custom charset used for reduction (MUST MATCH GENERATION!) > " << RESET;
+                simulate_typing(" [CUSTOM REDUCTION CHARSET] Enter the custom charset used for reduction (MUST MATCH GENERATION!) > ", 15, false);
                 std::getline(std::cin, reduction_charset);
             } else {
                 try {
@@ -811,29 +855,30 @@ int main() {
             }
             if (reduction_charset.empty()) {
                 std::cerr << CR_RED << "[ERROR] Reduction charset is empty. Cannot perform rainbow attack." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             int chain_len, assumed_min_len, assumed_max_len;
-            std::cout << CR_YELLOW << " [CHAIN LENGTH] Enter the chain length used when generating the table (MUST MATCH GENERATION!) > " << RESET;
+            simulate_typing(" [CHAIN LENGTH] Enter the chain length used when generating the table (MUST MATCH GENERATION!) > ", 15, false);
             std::cin >> chain_len;
-            std::cout << CR_YELLOW << " [MIN PASSWORD LENGTH] Enter the minimum password length used during generation (MUST MATCH GENERATION!) > " << RESET;
+            simulate_typing(" [MIN PASSWORD LENGTH] Enter the minimum password length used during generation (MUST MATCH GENERATION!) > ", 15, false);
             std::cin >> assumed_min_len;
-            std::cout << CR_YELLOW << " [MAX PASSWORD LENGTH] Enter the maximum password length used during generation (MUST MATCH GENERATION!) > " << RESET;
+            simulate_typing(" [MAX PASSWORD LENGTH] Enter the maximum password length used during generation (MUST MATCH GENERATION!) > ", 15, false);
             std::cin >> assumed_max_len;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             if (chain_len <= 0 || assumed_min_len <= 0 || assumed_max_len < assumed_min_len) {
                 std::cerr << CR_RED << "[ERROR] Invalid parameters for rainbow attack. Please check values." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             perform_rainbow_attack(input_hash_hex, rainbow_table_file_path, digest_algo, reduction_charset, chain_len, assumed_min_len, assumed_max_len);
         } else if (attack_choice == 4) {
+            simulate_typing("\n>>> [MODULE ACTIVATED] Initiating Rainbow Table Generation Protocol...", 25, true, true);
             std::cout << CR_BLUE << "\n--- [RAINBOW TABLE GENERATION PARAMETERS] -------------" << RESET << std::endl;
             std::string output_filename = "rainbow.txt";
-            std::cout << CR_YELLOW << " [OUTPUT FILE] Enter desired output filename (e.g., my_rainbow_table.txt). Default: rainbow.txt > " << RESET;
+            simulate_typing(" [OUTPUT FILE] Enter desired output filename (e.g., my_rainbow_table.txt). Default: rainbow.txt > ", 15, false);
             std::string temp_filename;
             std::getline(std::cin, temp_filename);
             if (!temp_filename.empty()) {
@@ -851,19 +896,19 @@ int main() {
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
             predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
-            std::cout << CR_CYAN << "   Choose a predefined charset or enter your own:" << RESET << std::endl;
+            simulate_typing("   Choose a predefined charset or enter your own:", 10);
             for (const auto& pair : predefined_charsets) {
-                std::cout << CR_CYAN << "   " << pair.first << ". " << pair.second.first << RESET << std::endl;
+                simulate_typing("   " + pair.first + ". " + pair.second.first, 5);
             }
-            std::cout << CR_CYAN << "   Or enter 'C' for Custom charset" << RESET << std::endl;
-            std::cout << CR_YELLOW << " [CHARACTER SET CHOICE] Enter choice (1-" << predefined_charsets.size() << " or C) > " << RESET;
+            simulate_typing("   Or enter 'C' for Custom charset", 10);
+            simulate_typing(" [CHARACTER SET CHOICE] Enter choice (1-" + std::to_string(predefined_charsets.size()) + " or C) > ", 15, false);
             std::string charset_choice_str;
             std::cin >> charset_choice_str;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::string charset_gen_input;
             std::transform(charset_choice_str.begin(), charset_choice_str.end(), charset_choice_str.begin(), ::toupper);
             if (charset_choice_str == "C") {
-                std::cout << CR_YELLOW << " [CUSTOM CHARACTER SET] Enter your custom charset > " << RESET;
+                simulate_typing(" [CUSTOM CHARACTER SET] Enter your custom charset > ", 15, false);
                 std::getline(std::cin, charset_gen_input);
             } else {
                 try {
@@ -885,69 +930,69 @@ int main() {
             }
             if (charset_gen_input.empty()) {
                 std::cerr << CR_RED << "[ERROR] Charset is empty. Cannot generate rainbow table." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             int min_len_gen, max_len_gen;
-            std::cout << CR_YELLOW << " [MIN LENGTH] Enter minimum password length for chains > " << RESET;
+            simulate_typing(" [MIN LENGTH] Enter minimum password length for chains > ", 15, false);
             std::cin >> min_len_gen;
-            std::cout << CR_YELLOW << " [MAX LENGTH] Enter maximum password length for chains > " << RESET;
+            simulate_typing(" [MAX LENGTH] Enter maximum password length for chains > ", 15, false);
             std::cin >> max_len_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             if (min_len_gen <= 0 || max_len_gen < min_len_gen) {
                 std::cerr << CR_RED << "[ERROR] Invalid length range. Min length > 0 and Max length >= Min length." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             long long num_chains_gen;
-            std::cout << CR_YELLOW << " [NUMBER OF CHAINS] Enter number of chains to generate (e.g., 1000000) > " << RESET;
+            simulate_typing(" [NUMBER OF CHAINS] Enter number of chains to generate (e.g., 1000000) > ", 15, false);
             std::cin >> num_chains_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             int chain_length_gen;
-            std::cout << CR_YELLOW << " [CHAIN LENGTH] Enter length of each chain (e.g., 10000) > " << RESET;
+            simulate_typing(" [CHAIN LENGTH] Enter length of each chain (e.g., 10000) > ", 15, false);
             std::cin >> chain_length_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::string hash_type_gen_str;
-            std::cout << CR_YELLOW << " [HASH TYPE] Enter hash type (MD5, SHA1, SHA256, SHA512). MUST MATCH TARGET! > " << RESET;
+            simulate_typing(" [HASH TYPE] Enter hash type (MD5, SHA1, SHA256, SHA512). MUST MATCH TARGET! > ", 15, false);
             std::cin >> hash_type_gen_str;
             std::transform(hash_type_gen_str.begin(), hash_type_gen_str.end(), hash_type_gen_str.begin(), ::toupper);
             const EVP_MD* digest_algo_gen = get_openssl_digest_type(hash_type_gen_str);
             if (digest_algo_gen == nullptr) {
                 std::cerr << CR_RED << "[ERROR] Unsupported hash type for generation. Supported: MD5, SHA1, SHA256, SHA384, SHA512." << RESET << std::endl;
-                std::cout << CR_YELLOW << "Press Enter to return to main menu..." << RESET;
+                simulate_typing("Press Enter to return to main menu...", 10);
                 std::cin.get();
                 continue;
             }
             long double estimated_file_size_bytes = (long double)num_chains_gen * ((long double)min_len_gen + (EVP_MD_size(digest_algo_gen) * 2) + 2);
-            std::cout << CR_MAGENTA << "\n[INFO] Generating a table of " << format_attempts(num_chains_gen) << " chains, each " << chain_length_gen << " steps long." << RESET << std::endl;
+            simulate_typing("\n[INFO] Generating a table of " + format_attempts(num_chains_gen) + " chains, each " + std::to_string(chain_length_gen) + " steps long.", 10);
             std::cout << CR_MAGENTA << "       This will result in a file size of approximately "
                       << std::fixed << std::setprecision(2)
                       << estimated_file_size_bytes / (1024.0 * 1024.0 * 1024.0)
                       << " GB (estimation, can vary based on actual password lengths)." << RESET << std::endl;
             std::cout << CR_YELLOW << "       (Remember the actual size might be smaller if passwords are shorter than max_len_gen, or larger if max_len_gen is significantly used.)" << RESET << std::endl;
             char confirm_choice_gen;
-            std::cout << CR_YELLOW << "Do you want to proceed with rainbow table generation? (y/n) > " << RESET;
+            simulate_typing("Do you want to proceed with rainbow table generation? (y/n) > ", 15, false);
             std::cin >> confirm_choice_gen;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             if (tolower(confirm_choice_gen) != 'y') {
-                std::cout << CR_YELLOW << "[INFO] Rainbow table generation cancelled by user." << RESET << std::endl;
+                simulate_typing("[INFO] Rainbow table generation cancelled by user.", 20);
             } else {
                 generate_rainbow_table(full_output_path, digest_algo_gen, charset_gen_input, min_len_gen, max_len_gen, num_chains_gen, chain_length_gen);
             }
         }
         else {
-            std::cerr << CR_RED << "[ERROR] Invalid attack choice. Please select 1, 2, 3, or 4." << RESET << std::endl;
+            simulate_typing("[ERROR] Invalid attack choice. Please select 1, 2, 3, or 4.", 20, true, true);
         }
         std::cout << CR_BLUE << "\n==========================================================" << RESET << std::endl;
         if (g_hash_cracked_flag.load()) {
-            std::cout << CR_GREEN << "  [CRACK COMPLETE] Password found! Returning to main menu. " << RESET << std::endl;
+            simulate_typing("  [CRACK COMPLETE] Password found! Returning to main menu. ", 30, true, true);
         } else {
-            std::cout << CR_CYAN << "  [MODULE COMPLETE] Operation finished. Returning to main menu. " << RESET << std::endl;
+            simulate_typing("  [MODULE COMPLETE] Operation finished. Returning to main menu. ", 20);
         }
         std::cout << CR_BLUE << "==========================================================" << RESET << std::endl;
-        std::cout << CR_YELLOW << "Press Enter to continue..." << RESET;
+        simulate_typing("Press Enter to continue...", 10);
         std::cin.get();
     }
     EVP_cleanup();
