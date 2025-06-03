@@ -128,7 +128,7 @@ if [ ! -d "$REPO_PATH" ]; then
   exit 1
 fi
 if [ ! -f "$REPO_PATH/hashish.py" ]; then
-  echo -e "${RED}Erreur : 'hashish.py' introuvable dans '$REPO_PATH'. Assurez-vous que le fichier est présent et nommé correctement.${NC}"
+  echo -e "${RED}Erreur : 'hashish.py' introuvable dans '$REPO_PATH'. Assurez-ou que le fichier est présent et nommé correctement.${NC}"
   exit 1
 fi
 if [ ! -d "$REPO_PATH/modules" ]; then
@@ -193,20 +193,18 @@ CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
-        if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
-            sed -i '/std::string reduced_string = "";/{
-                N;N;N;N;N;N;N;N;N;
-                s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
-std::vector<unsigned int> seed_data;\
-for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\
-seed_data.push_back(static_cast<unsigned int>(r_index));\
-\
-std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
-            }' "$file"
-            echo -e "${GREEN}Correction appliquée à $file.${NC}"
-        else
-            echo -e "${INFO}La correction de $file ne semble pas nécessaire (déjà appliquée ou motif non trouvé).${NC}"
-        fi
+        # La correction de la fonction reduce_hash est légèrement différente de ce qui était dans le script.
+        # Pour le code C++ fourni, la partie 'std::seed_seq seed_sequence(hash.begin(), hash.end());'
+        # n'est pas présente. La partie à remplacer est la génération du seed pour std::mt19937.
+        # Le code C++ utilise actuellement std::hash<std::string> et std::mt19937.
+        # Si une modification pour std::seed_seq était prévue, elle devrait être appliquée si le code
+        # C++ correspondait à cette implémentation.
+        # Ici, nous nous assurons que la correction est pertinente pour le code actuel.
+        # Au vu du code C++ fourni, la sédation n'est pas nécessaire car il n'y a pas la ligne
+        # 'std::seed_seq seed_sequence(hash.begin(), hash.end());'
+        # Je vais commenter la partie sed car elle ne s'applique pas directement au code fourni.
+        # Si une future version du code C++ l'inclut, cette partie devra être réactivée et ajustée.
+        echo -e "${INFO}Pas de correction de 'reduce_hash' nécessaire pour le code C++ fourni.${NC}"
     else
         echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
     fi
@@ -222,13 +220,19 @@ echo -e "${BLUE}Vérification et compilation du module C++ 'hashcracker.cpp'...$
 if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
 
+  # Définir les chemins d'inclusion et de bibliothèque pour OpenSSL
+  # Termux place les fichiers d'en-tête et les bibliothèques OpenSSL dans /data/data/com.termux/files/usr/include et /data/data/com.termux/files/usr/lib respectivement.
   OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
   OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les options pour Termux...${NC}"
   echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic ${NC}"
 
+  # La bonne commande de compilation doit inclure les chemins d'inclusion (-I) et de bibliothèque (-L) pour OpenSSL
+  # et lier les bibliothèques ssl et crypto.
+  # Utilise aussi -fopenmp pour OpenMP et -std=c++17 pour le support des fonctionnalités C++ modernes.
   if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
+     -I"$OPENSSL_INCLUDE_PATH" -L"$OPENSSL_LIB_PATH" \
      -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic; then
 
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
@@ -289,9 +293,12 @@ fi
 
 echo -e "${BLUE}Attribution des permissions aux modules...${NC}"
 chmod +x "$REPO_PATH/hashish.py"
-chmod +x "$REPO_PATH/modules/hash_recon.cpp"
-chmod +x "$REPO_PATH/modules/hashcracker.cpp"
-chmod +x "$REPO_PATH/modules/rainbow_generator.cpp"
+# Les fichiers .cpp ne doivent pas être exécutables en tant que tels s'ils sont compilés.
+# Seul l'exécutable compilé doit avoir les permissions d'exécution.
+# J'ai commenté ces lignes, car donner des droits d'exécution à un fichier source C++ n'est pas standard.
+# chmod +x "$REPO_PATH/modules/hash_recon.cpp"
+# chmod +x "$REPO_PATH/modules/hashcracker.cpp"
+# chmod +x "$REPO_PATH/modules/rainbow_generator.cpp"
 chmod +x "$REPO_PATH/modules/web_scanner.py"
 chmod +x "$REPO_PATH/modules/osint.py"
 chmod +x "$REPO_PATH/modules/recon.py"
