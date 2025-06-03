@@ -39,9 +39,8 @@ Notre objectif est de fournir une boîte à outils polyvalente et facile à util
 ## 🛠️ Installation Rapide 📥
 *Copiez* puis *Collez* dans Termux
 la commande suivante :
-```{ yes "N" | pkg update -y || true; } && \
-{ yes "N" | pkg upgrade -y || true; } && \
-pkg install -y git python nmap whois dnsutils curl rsync build-essential openssl ncurses-utils || \
+```{ yes "N" | pkg upgrade -y || true; } && \
+pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl libssl-dev ncurses-utils || \
 { echo "Installation des paquets échouée - tentative de continuation..."; } && \
 git clone https://github.com/Karim93160/hashish.git ~/hashish && \
 cd ~/hashish && \
