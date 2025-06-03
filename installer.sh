@@ -193,9 +193,7 @@ echo -e "${BLUE}Copie des modules Python depuis '$REPO_PATH/modules/' vers '$MOD
 if command -v rsync &> /dev/null; then
     echo -e "${INFO}Utilisation de rsync pour copier les modules Python (hors wordlists et autres fichiers non pertinents)...${NC}"
     # rsync pour exclure les wordlists et ne copier que les .py et les sous-dossiers vides
-    # Le --include='*/' permet de copier les sous-répertoires (importants pour l'organisation des modules)
-    # Le --exclude='*' à la fin signifie que tout le reste (non explicitement inclus) est exclu.
-    rsync -av --include='*.py' --include='*/' --exclude='wordlists/' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
+    rsync -av --include='*.py' --include='*/' --exclude='wordlists/' --exclude='*.cpp' --exclude='*.o' --exclude='*' "$REPO_PATH/modules/" "$MODULES_TARGET_DIR/" || { echo -e "${YELLOW}Avertissement : Erreur lors de la copie des modules Python avec rsync. Vérifiez le dossier '$REPO_PATH/modules/'.${NC}"; }
 else
     echo -e "${YELLOW}Avertissement : 'rsync' n'est pas installé. Copie des fichiers Python individuellement et des sous-dossiers (méthode de secours)...${NC}"
     # Fallback si rsync n'est pas disponible : copie les fichiers .py et les sous-dossiers (sauf 'wordlists')
@@ -203,7 +201,7 @@ else
 
     for dir in "$REPO_PATH/modules"/*/; do
         dir_name=$(basename "$dir")
-        if [ "$dir_name" != "wordlists" ]; then
+        if [[ "$dir_name" != "wordlists" && "$dir_name" != "hashcracker.cpp" && "$dir_name" != "rainbow_generator.cpp" ]]; then
             cp -r "$dir" "$MODULES_TARGET_DIR/" 2>/dev/null || true
         fi
     done
@@ -231,33 +229,45 @@ fi
 # --- Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++ ---
 echo -e "${BLUE}Pré-traitement : Correction de la fonction 'reduce_hash' dans les fichiers C++...${NC}"
 
-CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp") # Liste des fichiers C++ à corriger
-for file in "${CPP_FILES[@]}"; do
+CPP_SOURCE_FILES=("$REPO_PATH/modules/hashcracker.cpp" "$REPO_PATH/modules/rainbow_generator.cpp")
+REDUCTION_SED_PATTERN='std::string reduced_string = "";\n\
+    std::vector<unsigned int> seed_data;\n\
+    for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\n\
+    seed_data.push_back(static_cast<unsigned int>(r_index));\n\n\
+    std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());'
+OLD_SEED_SEQ_PATTERN='std::seed_seq seed_sequence(hash.begin(), hash.end());' # Ancien motif simplifié
+
+for file in "${CPP_SOURCE_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
-        # Utilisation de sed pour corriger la fonction. On utilise un autre délimiteur '#' pour éviter les problèmes avec les '/'
-        # On s'assure que le motif à remplacer est bien présent avant d'appliquer la correction.
-        # \x0A est la représentation hexadécimale du caractère de nouvelle ligne (newline)
-        if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
-            sed -i "s|std::string reduced_string = \"\";\x0A.*std::seed_seq seed_sequence(hash.begin(), hash.end());|std::string reduced_string = \"\";\x0A\
-    std::vector<unsigned int> seed_data;\x0A\
-    for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\x0A\
-    seed_data.push_back(static_cast<unsigned int>(r_index));\x0A\x0A\
-    std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());|g" "$file"
+        # Vérifie si la correction est nécessaire
+        if grep -qF "$OLD_SEED_SEQ_PATTERN" "$file"; then
+            # Remplace le motif avec un délimiteur sûr (#)
+            sed -i "s#std::string reduced_string = \"\";\n\
+    std::seed_seq seed_sequence(hash.begin(), hash.end());#${REDUCTION_SED_PATTERN}#g" "$file"
             echo -e "${GREEN}Correction appliquée à $file.${NC}"
         else
             echo -e "${INFO}La correction de $file ne semble pas nécessaire (déjà appliquée ou motif non trouvé).${NC}"
         fi
+
+        # Ajout du define PATH_MAX pour Termux si non présent
+        if ! grep -q "#define PATH_MAX" "$file"; then
+            sed -i '1s/^/#ifndef PATH_MAX\n#define PATH_MAX 4096\n#endif\n/' "$file"
+            echo -e "${GREEN}Ajout de #define PATH_MAX à $file.${NC}"
+        else
+            echo -e "${INFO}PATH_MAX déjà défini dans $file.${NC}"
+        fi
+
     else
-        echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé. Aucune correction appliquée.${NC}"
+        echo -e "${YELLOW}Avertissement : Fichier C++ source '$file' non trouvé. Aucune correction appliquée.${NC}"
     fi
 done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
+
 # S'assurer que le dossier des modules source a les permissions d'écriture pour la compilation
 echo -e "${BLUE}Vérification et attribution des permissions d'écriture pour le dossier des modules C++ source (${REPO_PATH}/modules)...${NC}"
 if [ -d "$REPO_PATH/modules" ]; then
-    # u+w donne les permissions d'écriture à l'utilisateur propriétaire du fichier/dossier
     chmod u+w "$REPO_PATH/modules" || { echo -e "${RED}Erreur : Impossible de donner les permissions d'écriture à $REPO_PATH/modules. Vérifiez si vous êtes propriétaire ou exécutez avec des privilèges suffisants.${NC}"; exit 1; }
     echo -e "${GREEN}Permissions d'écriture accordées à $REPO_PATH/modules.${NC}\n"
 else
@@ -278,14 +288,12 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE...${NC}"
 
   # Commande de compilation complète avec chemins d'inclusion et de bibliothèque pour Termux
-  COMPILATION_CMD="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic -I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
-  echo -e "${CYAN}Commande de compilation exécutée : ${COMPILATION_CMD}${NC}"
+  COMPILATION_CMD_HASHCRACKER="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic -I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
+  echo -e "${CYAN}Commande de compilation exécutée : ${COMPILATION_CMD_HASHCRACKER}${NC}"
 
-  # Exécution de la commande de compilation
-  if eval "$COMPILATION_CMD"; then # Utilisation de eval pour exécuter la chaîne de commande correctement
+  if eval "$COMPILATION_CMD_HASHCRACKER"; then
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
-    # Vérifie si le dossier cible des modules existe avant de déplacer
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
         echo -e "${RED}Erreur: Le dossier cible des modules '$MODULES_TARGET_DIR' n'existe pas. Impossible de déplacer l'exécutable C++.${NC}"
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
@@ -295,7 +303,6 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
     echo -e "${INFO}Déplacement de l'exécutable compilé vers son emplacement final : $HASHCRACKER_FINAL_EXECUTABLE${NC}"
     if mv "$HASHCRACKER_TEMP_EXECUTABLE" "$HASHCRACKER_FINAL_EXECUTABLE"; then
         echo -e "${GREEN}Exécutable C++ déplacé avec succès.${NC}"
-        # Rend l'exécutable exécutable
         if [ -f "$HASHCRACKER_FINAL_EXECUTABLE" ]; then
             chmod +x "$HASHCRACKER_FINAL_EXECUTABLE"
             echo -e "${GREEN}Permissions d'exécution accordées à $HASHCRACKER_FINAL_EXECUTABLE.${NC}"
@@ -309,14 +316,14 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
         echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
         exit 1
     fi
-
   else
     echo -e "${RED}------------------------------------------------------------------${NC}"
     echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp.${NC}"
     echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
     echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++ et sa compatibilité avec les versions d'OpenSSL de Termux.${NC}"
     echo -e "${RED}------------------------------------------------------------------${NC}"
-    exit 1 # Arrête le script en cas d'échec de compilation critique
+    # On ne sort pas ici, pour permettre la compilation de rainbow_generator si hashcracker.cpp a des erreurs spécifiques
+    # exit 1 # Arrête le script en cas d'échec de compilation critique
   fi
 else
   echo -e "${YELLOW}Fichier source hashcracker.cpp non trouvé dans $HASHCRACKER_CPP_SOURCE. La compilation C++ est ignorée.${NC}"
@@ -324,13 +331,65 @@ else
 fi
 echo ""
 
-# --- Nettoyage de l'ancien exécutable rainbow_generator ---
-RAINBOW_GENERATOR_OLD_EXECUTABLE="$MODULES_TARGET_DIR/rainbow_generator"
-if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
-    echo -e "${BLUE}Nettoyage de l'ancien exécutable rainbow_generator...${NC}"
-    rm "$RAINBOW_GENERATOR_OLD_EXECUTABLE" || { echo -e "${YELLOW}Avertissement : Impossible de supprimer l'ancien exécutable rainbow_generator. Veuillez le supprimer manuellement si nécessaire.${NC}"; }
-    echo -e "${GREEN}Ancien rainbow_generator supprimé.${NC}\n"
+# --- Compilation du Module C++ 'rainbow_generator.cpp' ---
+RAINBOW_GEN_CPP_SOURCE="$REPO_PATH/modules/rainbow_generator.cpp"
+RAINBOW_GEN_TEMP_EXECUTABLE="$REPO_PATH/modules/rainbow_generator_temp" # Exécutable temporaire
+RAINBOW_GEN_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/rainbow_generator" # Emplacement final
+
+echo -e "${BLUE}Vérification et compilation du module C++ 'rainbow_generator.cpp'...${NC}"
+
+if [ -f "$RAINBOW_GEN_CPP_SOURCE" ]; then
+  echo -e "${INFO}Fichier source C++ 'rainbow_generator.cpp' trouvé : $RAINBOW_GEN_CPP_SOURCE.${NC}"
+
+  echo -e "${CYAN}Lancement de la compilation de $RAINBOW_GEN_CPP_SOURCE vers $RAINBOW_GEN_TEMP_EXECUTABLE...${NC}"
+
+  # Commande de compilation pour rainbow_generator (sans OpenMP si non utilisé)
+  COMPILATION_CMD_RAINBOW_GEN="g++ \"$RAINBOW_GEN_CPP_SOURCE\" -o \"$RAINBOW_GEN_TEMP_EXECUTABLE\" -O3 -lssl -lcrypto -std=c++17 -Wall -pedantic -I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
+  echo -e "${CYAN}Commande de compilation exécutée : ${COMPILATION_CMD_RAINBOW_GEN}${NC}"
+
+  if eval "$COMPILATION_CMD_RAINBOW_GEN"; then
+    echo -e "${GREEN}Module C++ rainbow_generator compilé avec succès vers : $RAINBOW_GEN_TEMP_EXECUTABLE${NC}"
+
+    if [ ! -d "$MODULES_TARGET_DIR" ]; then
+        echo -e "${RED}Erreur: Le dossier cible des modules '$MODULES_TARGET_DIR' n'existe pas. Impossible de déplacer l'exécutable C++.${NC}"
+        echo -e "${YELLOW}Le module Rainbow Generator C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
+        exit 1
+    fi
+
+    echo -e "${INFO}Déplacement de l'exécutable compilé vers son emplacement final : $RAINBOW_GEN_FINAL_EXECUTABLE${NC}"
+    if mv "$RAINBOW_GEN_TEMP_EXECUTABLE" "$RAINBOW_GEN_FINAL_EXECUTABLE"; then
+        echo -e "${GREEN}Exécutable C++ déplacé avec succès.${NC}"
+        if [ -f "$RAINBOW_GEN_FINAL_EXECUTABLE" ]; then
+            chmod +x "$RAINBOW_GEN_FINAL_EXECUTABLE"
+            echo -e "${GREEN}Permissions d'exécution accordées à $RAINBOW_GEN_FINAL_EXECUTABLE.${NC}"
+        else
+            echo -e "${RED}Erreur: L'exécutable C++ n'a pas été trouvé après le déplacement. Problème de chemin ou de fichier manquant.${NC}"
+            echo -e "${YELLOW}Le module Rainbow Generator C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}Erreur: Impossible de déplacer l'exécutable C++ vers $RAINBOW_GEN_FINAL_EXECUTABLE. Vérifiez les permissions du dossier cible ou l'espace disque.${NC}"
+        echo -e "${YELLOW}Le module Rainbow Generator C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
+        exit 1
+    fi
+  else
+    echo -e "${RED}------------------------------------------------------------------${NC}"
+    echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de rainbow_generator.cpp.${NC}"
+    echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
+    echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++ et sa compatibilité avec les versions d'OpenSSL de Termux.${NC}"
+    echo -e "${RED}------------------------------------------------------------------${NC}"
+    # On ne sort pas ici, pour permettre au reste du script de continuer
+  fi
+else
+  echo -e "${YELLOW}Fichier source rainbow_generator.cpp non trouvé dans $RAINBOW_GEN_CPP_SOURCE. La compilation C++ est ignorée.${NC}"
+  echo -e "${YELLOW}Le module Rainbow Generator C++ ne sera PAS disponible.${NC}"
 fi
+echo ""
+
+# --- Nettoyage des exécutables temporaires C++ ---
+echo -e "${BLUE}Nettoyage des exécutables C++ temporaires...${NC}"
+rm -f "$HASHCRACKER_TEMP_EXECUTABLE" "$RAINBOW_GEN_TEMP_EXECUTABLE"
+echo -e "${GREEN}Nettoyage terminé.${NC}\n"
 
 # --- Vérification et Création du Fichier rainbow.txt ---
 RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt"
@@ -356,12 +415,19 @@ else
     echo -e "${YELLOW}Avertissement : $INSTALL_DIR/hashish.py non trouvé pour les permissions finales. Le script principal pourrait ne pas s'exécuter.${NC}"
 fi
 
-# Assurons-nous que l'exécutable C++ a les bonnes permissions d'exécution
+# Assurons-nous que les exécutables C++ ont les bonnes permissions d'exécution
 if [ -f "$MODULES_TARGET_DIR/hashcracker" ]; then
     chmod +x "$MODULES_TARGET_DIR/hashcracker"
     echo -e "${GREEN}Permissions d'exécution accordées à $MODULES_TARGET_DIR/hashcracker.${NC}"
 else
     echo -e "${YELLOW}Avertissement : $MODULES_TARGET_DIR/hashcracker non trouvé pour les permissions finales. Le module C++ pourrait ne pas fonctionner.${NC}"
+fi
+
+if [ -f "$MODULES_TARGET_DIR/rainbow_generator" ]; then
+    chmod +x "$MODULES_TARGET_DIR/rainbow_generator"
+    echo -e "${GREEN}Permissions d'exécution accordées à $MODULES_TARGET_DIR/rainbow_generator.${NC}"
+else
+    echo -e "${YELLOW}Avertissement : $MODULES_TARGET_DIR/rainbow_generator non trouvé pour les permissions finales. Le module C++ pourrait ne pas fonctionner.${NC}"
 fi
 
 # Pour les autres modules Python qui pourraient être dans le dossier des modules
