@@ -33,7 +33,16 @@ Nuestro objetivo es proporcionar una caja de herramientas versátil y fácil de 
 *Copie* y *Pegue* en Termux
 el siguiente comando:
 ```
-pkg update -y && yes "N" | pkg upgrade -y && pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl ncurses-utils && git clone https://github.com/Karim93160/hashish.git ~/hashish && cd ~/hashish && chmod +x installer.sh && echo "n" | ./installer.sh && termux-reload-settings
+{ yes "N" | pkg update || true; } && \
+{ yes "N" | pkg upgrade || true; } && \
+pkg install -y git python nmap whois dnsutils curl rsync build-essential openssl \
+clang ncurses-utils termux-tools && \
+pip install shodan && \
+git clone https://github.com/Karim93160/hashish.git ~/hashish && \
+cd ~/hashish && \
+chmod +x installer.sh && \
+./installer.sh && \
+termux-reload-settings
 
 ```
 
