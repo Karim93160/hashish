@@ -31,6 +31,7 @@
 #define BLUE    "\033[34m"
 #define MAGENTA "\033[35m"
 #define CYAN    "\033[36m"
+#define INFO_COLOR "\033[0;34m" // Added INFO_COLOR to match the bash script's INFO
 #define WHITE   "\033[37m"
 #define BOLDBLACK   "\033[1m\033[30m"
 #define BOLDRED     "\033[1m\033[31m"
@@ -410,7 +411,8 @@ void generate_combinations_recursive_omp(
         g_total_attempts_bruteforce++;
         if (g_total_attempts_bruteforce % 500000 == 0) {
             long double estimated_max = calculate_max_attempts(charset.length(), target_length, target_length);
-            draw_progress_bar(g_total_attempts_bruteforce, estimated_max, 50, CR_YELLOW + "[BRUTEFORCE] ", " (" + current_combination.substr(0, std::min((size_t)10, current_combination.length())) + "...) " + RESET);
+            // CONCATENATION FIX
+            draw_progress_bar(g_total_attempts_bruteforce, estimated_max, 50, CR_YELLOW + std::string("[BRUTEFORCE] "), " (" + current_combination.substr(0, std::min((size_t)10, current_combination.length())) + "...) " + RESET);
         }
         std::string hashed_attempt = calculate_hash_openssl(current_combination, digest_type);
         if (hashed_attempt == target_hash) {
@@ -578,7 +580,8 @@ void generate_rainbow_table(
         outfile << start_word << ":" << current_hash_in_chain << "\n";
         generated_chains_count++;
         if (generated_chains_count % 1000 == 0) {
-            draw_progress_bar(generated_chains_count, num_chains, 50, CR_YELLOW + "[GENERATION] ", " (" + start_word.substr(0, std::min((size_t)15, start_word.length())) + "...) " + RESET);
+            // CONCATENATION FIX
+            draw_progress_bar(generated_chains_count, num_chains, 50, CR_YELLOW + std::string("[GENERATION] "), " (" + start_word.substr(0, std::min((size_t)15, start_word.length())) + "...) " + RESET);
         }
     }
     outfile.close();
@@ -678,7 +681,8 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
                 if (cracked) break;
             }
             if (i % 100 == 0) {
-                draw_progress_bar(i, chain_length, 50, CR_YELLOW + "[CRACKING] ", " (Pos: " + std::to_string(i) + "/" + std::to_string(chain_length) + ", Len: " + std::to_string(current_len_for_reduction) + ") " + RESET);
+                // CONCATENATION FIX
+                draw_progress_bar(i, chain_length, 50, CR_YELLOW + std::string("[CRACKING] "), " (Pos: " + std::to_string(i) + "/" + std::to_string(chain_length) + ", Len: " + std::to_string(current_len_for_reduction) + ") " + RESET);
             }
         }
     }
@@ -757,7 +761,8 @@ int main() {
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
             simulate_typing("   Choose a predefined charset or enter your own:", 10);
             for (const auto& pair : predefined_charsets) {
-                simulate_typing("   " + pair.first + ". " + pair.second.first, 5);
+                // CONCATENATION FIX
+                simulate_typing(std::string("   ") + pair.first + ". " + pair.second.first, 5);
             }
             simulate_typing("   Or enter 'C' for Custom charset", 10);
             simulate_typing(" [CHARACTER SET CHOICE] Enter choice (1-" + std::to_string(predefined_charsets.size()) + " or C) > ", 15, false);
@@ -823,7 +828,8 @@ int main() {
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
             simulate_typing("   Choose the charset used during table generation:", 10);
             for (const auto& pair : predefined_charsets) {
-                simulate_typing("   " + pair.first + ". " + pair.second.first, 5);
+                // CONCATENATION FIX
+                simulate_typing(std::string("   ") + pair.first + ". " + pair.second.first, 5);
             }
             simulate_typing("   Or enter 'C' for Custom charset", 10);
             simulate_typing(" [REDUCTION CHARSET CHOICE] Enter choice (1-" + std::to_string(predefined_charsets.size()) + " or C) > ", 15, false);
@@ -898,7 +904,8 @@ int main() {
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
             simulate_typing("   Choose a predefined charset or enter your own:", 10);
             for (const auto& pair : predefined_charsets) {
-                simulate_typing("   " + pair.first + ". " + pair.second.first, 5);
+                // CONCATENATION FIX
+                simulate_typing(std::string("   ") + pair.first + ". " + pair.second.first, 5);
             }
             simulate_typing("   Or enter 'C' for Custom charset", 10);
             simulate_typing(" [CHARACTER SET CHOICE] Enter choice (1-" + std::to_string(predefined_charsets.size()) + " or C) > ", 15, false);
