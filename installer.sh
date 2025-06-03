@@ -26,7 +26,12 @@ done
 
 # Fonction pour effacer l'écran
 clear_screen() {
-    command -v clear &>/dev/null && clear || printf '\033c'
+    # Vérifie si la commande 'clear' existe, sinon utilise le code ANSI pour effacer
+    if command -v clear &>/dev/null; then
+        clear
+    else
+        printf '\033c'
+    fi
 }
 
 # Fonction pour installer un paquet Termux
@@ -43,7 +48,7 @@ install_package() {
 }
 
 # --- Début de l'Installation ---
-clear_screen
+clear_screen # Appel initial pour effacer l'écran au début de l'exécution du script d'installation
 
 # Bannière de Bienvenue
 echo -e "${CYAN}=======================================${NC}"
@@ -151,11 +156,12 @@ else
 fi
 
 # Attribution des permissions d'exécution à la commande 'clear' si elle existe (pour la robustesse du lanceur)
+# Cette étape est moins critique ici car `clear_screen` gère le cas où `clear` n'est pas directement exécutable.
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
     chmod +x /data/data/com.termux/files/usr/bin/clear &>/dev/null
     echo -e "${GREEN}Permissions d'exécution accordées à 'clear'.${NC}"
 else
-    echo -e "${YELLOW}Avertissement : Commande 'clear' non trouvée, permissions non modifiées. Le script continuera, mais 'clear' pourrait ne pas fonctionner comme prévu.${NC}"
+    echo -e "${YELLOW}Avertissement : Commande 'clear' non trouvée, permissions non modifiées. Le script continuera, mais la méthode 'clear' pourrait utiliser le code ANSI.${NC}"
 fi
 echo -e "${GREEN}Prérequis système vérifiés et installés si nécessaire.${NC}\n"
 
@@ -342,7 +348,7 @@ compile_cpp_module() {
         echo -e "${YELLOW}Le module ${module_name} C++ ne sera PAS disponible.${NC}"
         return 1 # Fichier source non trouvé
     fi
-    echo "" # Nouvelle ligne pour la clartée
+    echo "" # Nouvelle ligne pour la clarté
 }
 
 # Appel de la fonction de compilation pour chaque module
@@ -380,11 +386,14 @@ echo -e "${GREEN}Permissions d'exécution vérifiées et accordées pour les mod
 echo -e "${BLUE}Création d'un script exécutable global 'hashish' dans ${INSTALL_DIR}...${NC}"
 cat > "$INSTALL_DIR/hashish" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
-# Fonction pour effacer l'écran dans le lanceur
-clear_screen_func() {
-    command -v clear &>/dev/null && clear || printf '\033c'
+clear_screen() {
+    if command -v clear &>/dev/null; then
+        clear
+    else
+        printf '\033c'
+    fi
 }
-clear_screen_func # Appel de la fonction
+clear_screen # Appel de la fonction pour effacer l'écran au lancement de 'hashish'
 exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
 chmod +x "$INSTALL_DIR/hashish"
