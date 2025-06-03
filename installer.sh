@@ -27,6 +27,7 @@ spinner() {
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b"
+    C'
     done
     printf "    \b\b\b\b"
 }
@@ -153,13 +154,23 @@ EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${G}  ✓ Launcher created${NC}\n"
 
-# Installation complete - Message to user
+# Installation complete - Message to user and auto-launch
 echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complète!"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
-pretty_print $C $BOLD "\n  Pour lancer HASHISH, tapez: ${Y}hashish${NC}"
-sleep 3 # Laisse le temps de lire les messages de fin d'installation
 
-# --- SUPPRIMER ou COMMENTER CES LIGNES ---
-# exec hashish
-# --- FIN DE LA SUPPRESSION ---
+# --- Nouvelle logique de lancement automatique ---
+pretty_print $C $BOLD "\n  Lancement automatique de HASHISH dans 3 secondes..."
+sleep 3 # Donne au terminal le temps de se stabiliser
+
+# Efface l'écran avant le lancement pour une interface propre
+clear_terminal
+
+# Lance hashish de manière interactive
+# Utiliser `bash -c "hashish"` ou simplement `hashish` si $INSTALL_DIR est dans le PATH
+# La méthode la plus fiable est d'appeler l'exécutable Python avec le script directement
+# ou de s'assurer que le PATH est correctement mis à jour pour que `hashish` soit trouvé.
+# Pour Termux, $INSTALL_DIR (/data/data/com.termux/files/usr/bin) est généralement dans le PATH.
+# On peut aussi utiliser `command hashish` pour s'assurer qu'on utilise la commande shell.
+hashish
+# --- Fin de la nouvelle logique ---
