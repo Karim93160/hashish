@@ -71,12 +71,30 @@ find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/nu
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 pretty_print "$G" "" "  ✓ Files copied\n"
 
----
+pretty_print "$Y" "" "  [3/5] Compiling modules..."
+(
+    # La ligne de compilation pour hashcracker.cpp a été mise à jour ici
+    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -Wall -O3 -std=c++17 -fopenmp -lcrypto -lssl -lstdc++fs
+    clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
+) > /dev/null 2>&1 &
+spinner $!
+pretty_print "$G" "" "  ✓ Compilation finished\n"
 
-### Explication des modifications
+pretty_print "$Y" "" "  [4/5] Setting permissions..."
+chmod -R +x "$MODULES_DIR"
+chmod +x "$INSTALL_DIR/hashish.py"
+pretty_print "$G" "" "  ✓ Permissions set\n"
 
-La modification se trouve dans la section `[3/5] Compiling modules...`. J'ai remplacé l'ancienne ligne de compilation pour `hashcracker.cpp` par la nouvelle que tu as fournie :
+pretty_print "$Y" "" "  [5/5] Creating launcher..."
+cat > "$INSTALL_DIR/hashish" <<EOF
+#!/bin/bash
+exec python3 "$INSTALL_DIR/hashish.py" "\$@"
+EOF
+chmod +x "$INSTALL_DIR/hashish"
+pretty_print "$G" "" "  ✓ Launcher created\n"
 
-Ancienne ligne :
-```bash
-clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
+echo -e "${BL}=========================================================${NC}"
+pretty_print "$C" "$BOLD" "\n  Installation complete!"
+echo -e "${M}  HASHISH is now ready to use.${NC}\n"
+sleep 2
+exec hashish
