@@ -33,7 +33,14 @@ HASHCRACKER_CPP_EXECUTABLE = os.path.join(MODULES_PATH, "hashcracker")
 
 
 def clear_screen():
-    os.system("cls" if os.name == "nt" else "clear")
+    # Attempt to use tput for better compatibility, fallback to ANSI escape codes
+    if os.name == 'posix': # Linux/Unix/Termux
+        # Try tput first (more robust, respects TERM variable)
+        if os.system("tput reset 2>/dev/null") != 0:
+            # Fallback to ANSI escape code if tput fails or is not found
+            print("\033[H\033[J", end="") # Move cursor to top-left and clear screen
+    else: # Windows
+        os.system("cls")
 
 
 def color_cycle():
