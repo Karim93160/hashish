@@ -46,6 +46,20 @@ termux-reload-settings
 ```
 
 ---
+<div align="center">
+  <h2>💬 Hashish Community - Join the Discussion! 💬</h2>
+  <p>
+    Have questions, ideas, or just want to chat about the Hashish project?
+    Join our community on GitHub Discussions! It's the perfect place for open conversations and general support.
+  </p>
+  <p>
+    <a href="https://github.com/karim93160/hashish/discussions">
+      <img src="https://img.shields.io/badge/Join%20Community-Discussions-blue?style=for-the-badge&logo=github" alt="Join Community">
+    </a>
+  </p>
+</div>
+
+
 **We are excited to announce a**
 ### *Major Update: Integration of Optimized C++ Cracking Module and Rainbow Table Attack!* 🎉
 
