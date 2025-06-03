@@ -41,12 +41,12 @@ pretty_print() {
 
 # Clear screen (using tput for better compatibility)
 clear_terminal() {
-    tput clear 2>/dev/null || clear
+    tput reset 2>/dev/null || clear
 }
 
 clear_terminal
 
-# ASCII Banner with colors
+# ASCII Banner with colors - MAINTAINED EXACTLY AS PROVIDED
 echo -e "${C}${BOLD}"
 cat << "EOF"
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -148,11 +148,9 @@ echo -e "${G}  ✓ Permissions configured${NC}\n"
 pretty_print $Y "" "  [6/6] Creating launcher..."
 cat > "$INSTALL_DIR/hashish" <<EOF
 #!/bin/bash
-# Check if banner exists
-if [[ ! -f "$INSTALL_DIR/banner-hashish.txt" ]]; then
-    echo -e "\033[1;33m[WARNING] Banner file not found. Running without custom banner.\033[0m" >&2
-fi
-python3 "$INSTALL_DIR/hashish.py" "\$@"
+# Check if banner exists (this check is for the Python script, not the launcher)
+# The Python script handles banner display.
+exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${G}  ✓ Launcher created${NC}\n"
@@ -162,8 +160,10 @@ echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complete!"
 echo -e "${M}  HASHISH is now ready to use.${NC}\n"
 
-# Launch HASHISH
+# Auto-launch HASHISH
 pretty_print $W $BLINK "  Launching HASHISH in 3 seconds..."
 sleep 3
-clear_terminal
-hashish
+clear_terminal # Ensure terminal is clear before launch
+hashish # Attempt to launch hashish
+# If for some reason hashish fails to launch, the user will see the previous output
+# and can try to launch it manually.
