@@ -6,7 +6,7 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-INFO='\033[0;34m' # Déjà défini mais explicitement mentionné dans ton code
+INFO='\033[0;34m'
 
 clear_screen() {
     if command -v clear &>/dev/null; then
@@ -71,7 +71,7 @@ fi
 
 INSTALL_DIR="/data/data/com.termux/files/usr/bin"
 MODULES_TARGET_DIR="$INSTALL_DIR/modules"
-WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists" # Ton original place wordlists ici, c'est logique
+WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists"
 
 echo -e "${BLUE}Vérification et installation des prérequis système (build-essential, openssl, ncurses-utils)...${NC}"
 
@@ -87,40 +87,35 @@ install_package() {
     fi
 }
 
-# Vérifier et installer les dépendances C++ et Python
-# Ajout de `clang` et `python` à la liste des packages à installer.
-# `build-essential` installe g++ et make, mais je le vérifie explicitement aussi.
-REQUIRED_PKGS=("clang" "g++" "make" "openssl" "libssl-dev" "git" "python")
+# --- DÉBUT DE LA SECTION CORRIGÉE ---
+
+# Liste des paquets essentiels pour Termux
+# build-essential inclut g++ et make
+# libssl-dev fournit les en-têtes pour OpenSSL pour la compilation C++
+REQUIRED_PKGS=("clang" "build-essential" "openssl" "libssl-dev" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
+
 for pkg_name in "${REQUIRED_PKGS[@]}"; do
     if ! dpkg -s "$pkg_name" &>/dev/null; then
         echo -e "${YELLOW}Paquet '${pkg_name}' non trouvé. Installation de '${pkg_name}'...${NC}"
-        install_package "$pkg_name" || { echo -e "${RED}Installation annulée. Le paquet '${pkg_name}' est nécessaire.${NC}"; exit 1; }
+        install_package "$pkg_name" || { 
+            echo -e "${RED}Installation annulée. Le paquet '${pkg_name}' est nécessaire.${NC}"
+            exit 1
+        }
     else
         echo -e "${GREEN}Paquet '${pkg_name}' est déjà installé.${NC}"
     fi
 done
 
-# Vérification spécifique pour build-essential/g++ (redondant mais suit ta logique)
+# Vérification spécifique du compilateur g++ après l'installation de build-essential
 if ! command -v g++ &> /dev/null; then
-    echo -e "${YELLOW}Compilateur g++ non trouvé. Installation de 'build-essential'...${NC}"
-    install_package "build-essential" || { echo -e "${RED}Installation annulée. 'build-essential' est nécessaire pour compiler les modules C++.${NC}"; exit 1; }
+  echo -e "${RED}Erreur : g++ n'est toujours pas disponible après l'installation de 'build-essential'. Impossible de compiler les modules C++.${NC}"
+  echo -e "${YELLOW}Veuillez résoudre manuellement le problème d'installation de 'build-essential' dans Termux et relancer le script.${NC}"
+  exit 1
 else
-    echo -e "${GREEN}Compilateur g++ est déjà disponible.${NC}"
+  echo -e "${GREEN}Compilateur g++ est maintenant disponible.${NC}"
 fi
 
-if ! pkg list-installed | grep -q "^openssl/"; then # Vérifie openssl via pkg list-installed
-    echo -e "${YELLOW}OpenSSL non trouvé. Nécessaire pour la compilation C++. Installation de 'openssl'...${NC}"
-    install_package "openssl" || { echo -e "${RED}Installation annulée. 'openssl' est nécessaire pour compiler les modules C++.${NC}"; exit 1; }
-else
-    echo -e "${GREEN}OpenSSL est déjà installé.${NC}"
-fi
-
-if ! command -v clear &> /dev/null; then
-    echo -e "${YELLOW}Commande 'clear' non trouvée ou non exécutable. Installation de 'ncurses-utils'...${NC}"
-    install_package "ncurses-utils" || { echo -e "${YELLOW}Avertissement : Impossible d'installer 'ncurses-utils'. La commande 'clear' pourrait ne pas fonctionner correctement, mais l'outil utilisera un fallback.${NC}"; }
-else
-    echo -e "${GREEN}Commande 'clear' est déjà disponible.${NC}"
-fi
+# --- FIN DE LA SECTION CORRIGÉE ---
 
 echo -e "${BLUE}Attribution des permissions d'exécution à la commande 'clear'...${NC}"
 if [ -f "/data/data/com.termux/files/usr/bin/clear" ]; then
@@ -131,11 +126,6 @@ else
 fi
 echo ""
 
-if ! command -v g++ &> /dev/null; then
-  echo -e "${RED}Erreur : g++ n'est toujours pas disponible après l'installation des prérequis. Impossible de compiler les modules C++.${NC}"
-  echo -e "${YELLOW}Veuillez résoudre manuellement le problème d'installation de 'build-essential' dans Termux et relancer le script.${NC}"
-  exit 1
-fi
 echo -e "${GREEN}Prérequis système vérifiés et installés si nécessaire.${NC}\n"
 
 echo -e "${BLUE}Validation du contenu du dépôt '${REPO_PATH}'...${NC}"
@@ -209,9 +199,6 @@ CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
-        # La correction spécifique pour reduce_hash
-        # J'ai remis la section sed comme dans ton script original.
-        # Si le code est déjà corrigé, cela ne fera rien de mal car grep ne trouvera pas le motif.
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
             sed -i '/std::string reduced_string = "";/{
                 N;N;N;N;N;N;N;N;N;
@@ -233,27 +220,19 @@ done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
-HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp" # Compile vers un temp dans le dépôt
-HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker" # Déplace vers la cible dans usr/bin/modules
+HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp"
+HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
 
 echo -e "${BLUE}Vérification et compilation du module C++ 'hashcracker.cpp'...${NC}"
 
 if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
 
-  # OPENSSL_INCLUDE_PATH et OPENSSL_LIB_PATH ne sont généralement pas nécessaires
-  # si les paquets `openssl` et `libssl-dev` sont installés, g++ les trouve automatiquement.
-  # Je les laisse en commentaire pour info mais ne les utilise pas directement dans la commande.
-  # OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
-  # OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
-
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les options pour Termux...${NC}"
-  # Commande de compilation. Ajout de `-std=c++17` pour la compatibilité, `-O3` pour l'optimisation, `-fopenmp` pour OpenMP.
-  # `-lssl` et `-lcrypto` pour OpenSSL sont cruciaux. `-Wall -pedantic` pour les avertissements.
   COMPILE_COMMAND="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic"
   echo -e "${CYAN}Commande de compilation : ${COMPILE_COMMAND}${NC}"
 
-  if $COMPILE_COMMAND; then # Exécute la commande de compilation
+  if $COMPILE_COMMAND; then
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
@@ -301,7 +280,7 @@ if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
     echo -e "${GREEN}Ancien rainbow_generator supprimé.${NC}\n"
 fi
 
-RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt" # Garder la même logique que ton script pour le placement de rainbow.txt
+RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt"
 echo -e "${BLUE}Vérification et création du fichier rainbow.txt...${NC}"
 if [ ! -f "$RAINBOW_TXT_PATH" ]; then
     touch "$RAINBOW_TXT_PATH" || { echo -e "${RED}Erreur: Impossible de créer le fichier rainbow.txt à $RAINBOW_TXT_PATH. Vérifiez les permissions.${NC}"; }
@@ -311,21 +290,18 @@ else
 fi
 
 echo -e "${BLUE}Attribution des permissions aux modules...${NC}"
-chmod +x "$REPO_PATH/hashish.py" # Ce fichier sera copié, les permissions seront appliquées à la copie par la suite
-# Pour les fichiers C++ et Python dans le dossier 'modules'
-chmod +x "$REPO_PATH/modules/hash_recon.cpp" 2>/dev/null || true # Utilise 2>/dev/null pour éviter les erreurs si le fichier n'existe pas
+chmod +x "$REPO_PATH/hashish.py"
+chmod +x "$REPO_PATH/modules/hash_recon.cpp" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/hashcracker.cpp" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/rainbow_generator.cpp" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/web_scanner.py" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/osint.py" 2>/dev/null || true
 chmod +x "$REPO_PATH/modules/recon.py" 2>/dev/null || true
-chmod +r "$REPO_PATH/modules/hash_recon.h" 2>/dev/null || true # .h files typically only need read permissions
+chmod +r "$REPO_PATH/modules/hash_recon.h" 2>/dev/null || true
 echo -e "${GREEN}Permissions accordées aux fichiers spécifiés dans le REPO_PATH.${NC}\n"
 echo -e "${GREEN}Note: Les permissions pour les fichiers copiés dans $INSTALL_DIR et $MODULES_TARGET_DIR sont définies séparément.${NC}\n"
 
-
 echo -e "${BLUE}Création d'un script exécutable global...${NC}"
-# Le wrapper sera dans $INSTALL_DIR et lancera hashish.py qui est aussi dans $INSTALL_DIR
 cat > "$INSTALL_DIR/hashish" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 clear_screen_func() {
