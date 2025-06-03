@@ -34,10 +34,9 @@ Nuestro objetivo es proporcionar una caja de herramientas versátil y fácil de 
 el siguiente comando:
 ```
 { yes "N" | pkg upgrade -y || true; } && \
-pkg install -y git python nmap whois dnsutils curl rsync build-essential openssl ncurses-utils || \
+pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl ncurses-utils || \
 { echo "Installation des paquets échouée - tentative de continuation..."; } && \
 echo -e "\n\n\033[31mATTENTION : Cet outil n'est PAS destiné aux appareils rootés !\033[0m\n" && \
-pip install shodan && \
 git clone https://github.com/Karim93160/hashish.git ~/hashish && \
 cd ~/hashish && \
 chmod +x installer.sh && \
