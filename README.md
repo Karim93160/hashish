@@ -214,14 +214,15 @@ _________
   <h2>🐞 Signaler un Bug dans Hashish 🐞</h2>
   <p>
     Rencontrez-vous un problème avec Hashish ? Aidez-nous à améliorer le projet en signalant les bugs !
-    Veuillez utiliser notre modèle de rapport de bug dédié pour nous fournir toutes les informations nécessaires.
+    Cliquez sur le bouton ci-dessous pour ouvrir directement un nouveau rapport de bug pré-rempli.
   </p>
   <p>
-    <a href=".github/ISSUE_TEMPLATE/bug_report.md">
-      <img src="https://img.shields.io/badge/Signaler%20un%20Bug-Cliquez%20Ici-red?style=for-the-badge&logo=bugsnag" alt="Signaler un Bug">
+    <a href="https://github.com/karim93160/hashish/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=">
+      <img src="https://img.shields.io/badge/Signaler%20un%20Bug-Ouvrir%20une%20Issue-red?style=for-the-badge&logo=bugsnag" alt="Signaler un Bug">
     </a>
   </p>
 </div>
+
 
 **⚠️ Avertissement**
 
