@@ -34,7 +34,7 @@ Our goal is to provide a versatile and easy-to-use toolkit that allows users to 
 the following command:
 ```
 { yes "N" | pkg upgrade -y || true; } && \
-pkg install -y git python nmap whois dnsutils curl rsync build-essential openssl ncurses-utils || \
+pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl libssl-dev ncurses-utils || \
 { echo "Installation des paquets échouée - tentative de continuation..."; } && \
 git clone https://github.com/Karim93160/hashish.git ~/hashish && \
 cd ~/hashish && \
