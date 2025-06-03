@@ -39,8 +39,14 @@ pretty_print() {
     echo -e "${effect}${color}$msg${NC}"
 }
 
-# Effacer l'écran
-clear
+# Effacer l'écran (utilisation de tput pour plus de robustesse)
+# Note : Le script Python utilise sa propre fonction clear_screen.
+# Ici, c'est pour l'installation elle-même.
+clear_terminal() {
+    tput clear 2>/dev/null || clear
+}
+
+clear_terminal
 
 # Bannière ASCII animée avec plus de couleurs
 echo -e "${C}${BOLD}"
@@ -96,7 +102,7 @@ pretty_print $Y "" "  [2/6] Installation des dépendances..."
 (
     pkg update -y && \
     pkg upgrade -y && \
-    pkg install -y clang openssl git python
+    pkg install -y clang openssl git python termux-tools # Ajout de termux-tools pour tput
 ) > /dev/null 2>&1 &
 spinner $!
 echo -e "${G}  ✓ Dépendances installées${NC}\n"
@@ -105,7 +111,8 @@ echo -e "${G}  ✓ Dépendances installées${NC}\n"
 pretty_print $Y "" "  [3/6] Préparation de l'installation..."
 mkdir -p "$MODULES_DIR" "$WORDLISTS_DIR"
 cp "$REPO_PATH/hashish.py" "$INSTALL_DIR/"
-**cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/" 2>/dev/null** # Nouvelle ligne pour copier la bannière
+**cp "$REPO_PATH/banner-hashish.txt" "$INSTALL_DIR/" 2>/dev/null** # On s'assure que le fichier est copié
+**chmod 644 "$INSTALL_DIR/banner-hashish.txt" 2>/dev/null || true** # On ajoute des permissions de lecture explicites
 find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/null
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 echo -e "${G}  ✓ Fichiers copiés${NC}\n"
@@ -134,6 +141,8 @@ echo -e "${G}  ✓ Permissions configurées${NC}\n"
 pretty_print $Y "" "  [6/6] Création du lanceur..."
 cat > "$INSTALL_DIR/hashish" <<EOF
 #!/bin/bash
+# Assurez-vous d'avoir Python 3 dans votre PATH. Si ce n'est pas le cas,
+# utilisez le chemin absolu comme /data/data/com.termux/files/usr/bin/python3
 python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
 chmod +x "$INSTALL_DIR/hashish"
@@ -147,5 +156,5 @@ echo -e "${M}  HASHISH est maintenant prêt à être utilisé.${NC}\n"
 # Lancement de HASHISH
 pretty_print $W $BLINK "  Lancement de HASHISH dans 3 secondes..."
 sleep 3
-clear
+clear_terminal # Utilisation de la nouvelle fonction clear_terminal
 hashish
