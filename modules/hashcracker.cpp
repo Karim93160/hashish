@@ -15,6 +15,7 @@
 #include <mutex>
 #include <random>
 #include <filesystem>
+#include <cctype> // For std::islower, std::toupper
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -30,6 +31,7 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
+// --- Définitions de couleurs et styles ---
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"
 #define RED     "\033[31m"
@@ -68,11 +70,13 @@
 #define CR_MAGENTA MAGENTA BOLD FAINT
 #define CR_DARK_GRAY "\033[90m"
 
+// --- Variables globales et mutex ---
 std::atomic<bool> g_hash_cracked_flag(false);
 std::string g_found_password;
-std::mutex g_cout_mutex;
-std::atomic<long long> g_total_attempts_bruteforce(0);
+std::mutex g_cout_mutex; // Protège les opérations de sortie console
+std::atomic<long long> g_total_attempts_bruteforce(0); // Compteur global pour le bruteforce
 
+// --- Fonctions utilitaires ---
 std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
@@ -134,7 +138,7 @@ long double calculate_max_attempts(int charset_size, int min_len, int max_len) {
         if (charset_size > 0) {
             total_attempts += std::pow((long double)charset_size, (long double)len);
         } else {
-            return 0;
+            return 0; // Charset vide, pas de tentatives
         }
     }
     return total_attempts;
@@ -203,8 +207,9 @@ double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int 
         }
     }
 #else
+    // Fallback for single thread if OpenMP is not enabled
     std::string test_input_base = "bench_input_0";
-    for (int j = 0; j < benchmark_attempts_per_thread * num_threads; ++j) {
+    for (int j = 0; j < benchmark_attempts_per_thread * num_threads; ++j) { // Simule le même nombre de hachages
         calculate_hash_openssl(test_input_base + std::to_string(j), digest_type);
         benchmark_total_hashes++;
     }
@@ -254,14 +259,16 @@ std::string reduce_hash(const std::string& hash, size_t target_len, const std::s
     
     std::string reduced_string = "";
 
-    std::vector<unsigned int> seed_data;
-    for (char c : hash) {
-        seed_data.push_back(static_cast<unsigned int>(c));
+    // Utilisation des 8 premiers octets du hash pour la graine, complété par r_index
+    // Assure un seed stable et déterministe basé sur le hash et l'index de réduction
+    unsigned long long seed_val = 0;
+    for (size_t i = 0; i < std::min(hash.length(), sizeof(unsigned long long) * 2); ++i) { // Chaque char hex est 4 bits, donc 2 chars = 1 octet
+        seed_val = (seed_val << 4) | (unsigned long long)std::stoul(hash.substr(i, 1), nullptr, 16);
     }
-    seed_data.push_back(static_cast<unsigned int>(r_index));
+    // Ajout de r_index pour varier la réduction à chaque étape de la chaîne
+    seed_val ^= r_index;
 
-    std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());
-    std::mt19937 generator(seed_sequence);
+    std::mt19937 generator(seed_val);
     std::uniform_int_distribution<> distribution(0, charset.length() - 1);
 
     for (size_t i = 0; i < target_len; ++i) {
@@ -270,6 +277,7 @@ std::string reduce_hash(const std::string& hash, size_t target_len, const std::s
     return reduced_string;
 }
 
+// --- Fonctions d'affichage et d'animation ---
 void set_cursor_position(int x, int y) {
     std::cout << "\033[" << y << ";" << x << "H";
 }
@@ -317,12 +325,9 @@ void draw_progress_bar(long long current, long double total, int width = 50, con
     std::lock_guard<std::mutex> lock(g_cout_mutex);
     clear_line();
 
-    if (total <= 0) {
-        std::cout << prefix << "[ERROR: Total attempts is 0]" << suffix << std::flush;
-        return;
-    }
-
-    double progress = static_cast<double>(current) / total;
+    // Ajustement pour éviter la division par zéro ou l'affichage incohérent si total est inconnu/zéro.
+    // Pour le bruteforce avec distribution de préfixes, total n'est pas toujours exact.
+    double progress = (total > 0) ? static_cast<double>(current) / total : 0.0;
     int filled_width = static_cast<int>(width * progress);
 
     std::cout << prefix << "[";
@@ -360,8 +365,54 @@ void display_matrix_effect(int lines, int delay_ms) {
         std::cout << RESET << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
     }
-    std::cout << "\033[H\033[J";
+    std::cout << "\033[H\033[J"; // Clear screen after effect
 }
+
+// --- Nouvelles fonctions pour les règles de dictionnaire ---
+std::vector<std::string> generate_word_variations(const std::string& word) {
+    std::vector<std::string> variations;
+    variations.push_back(word); // Le mot original est toujours un candidat
+
+    // Règle 1: Première lettre en majuscule
+    if (!word.empty() && std::islower(word[0])) {
+        std::string capitalized_word = word;
+        capitalized_word[0] = std::toupper(capitalized_word[0]);
+        variations.push_back(capitalized_word);
+    }
+
+    // Règle 2: Ajout de chiffres courants et symboles à la fin (simple)
+    for (char c : {'1', '!', '$', '0'}) { // Ajout de quelques caractères courants
+        variations.push_back(word + c);
+    }
+    variations.push_back(word + "123");
+    variations.push_back(word + "00");
+
+    // Règle 3: Remplacements courants (leetspeak simple)
+    std::string leet_word = word;
+    bool modified = false;
+    for (char &c : leet_word) {
+        char original_c = c; // Garde l'original pour la comparaison
+        if (c == 'a' || c == 'A') c = '@';
+        else if (c == 's' || c == 'S') c = '$';
+        else if (c == 'i' || c == 'I') c = '1';
+        else if (c == 'e' || c == 'E') c = '3';
+        else if (c == 'o' || c == 'O') c = '0';
+        if (c != original_c) modified = true;
+    }
+    if (modified) {
+        variations.push_back(leet_word);
+    }
+    
+    // Règle 4: Années courantes (ajustable)
+    int current_year = std::chrono::duration_cast<std::chrono::years>(std::chrono::system_clock::now().time_since_epoch()).count() + 1970; // Approximation de l'année courante
+    variations.push_back(word + std::to_string(current_year));
+    variations.push_back(word + std::to_string(current_year % 100)); // ex: 24, 25
+
+    return variations;
+}
+
+
+// --- Fonctions d'attaque ---
 
 void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* digest_type) {
     std::cout << "\n" << CR_BLUE << ">>> [SCANNING] Initiating Dictionary Attack..." << RESET << std::endl;
@@ -421,35 +472,42 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
         std::string word;
         while (std::getline(wordlist_file, word) && !g_hash_cracked_flag.load()) {
             if (!word.empty() && word.back() == '\r') {
-                word.pop_back();
+                word.pop_back(); // Supprime le caractère de retour chariot si présent (Windows)
             }
             if (word.empty()) continue;
 
-            total_attempts++;
+            // Génère les variations du mot actuel en utilisant les règles
+            std::vector<std::string> candidates = generate_word_variations(word);
 
-            if (total_attempts % 50000 == 0) {
-                std::lock_guard<std::mutex> lock(g_cout_mutex);
-                clear_line();
-                std::cout << CR_YELLOW << "[PROGRESS] Dictionary: " << format_attempts(total_attempts) << " words scanned. Current: " << word.substr(0, std::min((size_t)30, word.length())) << "..." << std::flush << RESET;
-            }
+            for (const std::string& candidate_word : candidates) {
+                if (g_hash_cracked_flag.load()) break; // Vérifie le flag après chaque candidat généré
 
-            std::string current_hash = calculate_hash_openssl(word, digest_type);
-            if (current_hash == target_hash) {
-                std::lock_guard<std::mutex> lock(g_cout_mutex);
-                if (!g_hash_cracked_flag.load()) {
-                    g_found_password = word;
-                    g_hash_cracked_flag.store(true);
-                    std::cout << "\r" << std::string(120, ' ') << "\r";
-                    std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
+                total_attempts++; // Compte chaque tentative de hachage
+
+                if (total_attempts % 50000 == 0) { // Mise à jour de la progression moins fréquente
+                    std::lock_guard<std::mutex> lock(g_cout_mutex);
+                    clear_line();
+                    std::cout << CR_YELLOW << "[PROGRESS] Dictionary: " << format_attempts(total_attempts) << " words/rules scanned. Current: " << candidate_word.substr(0, std::min((size_t)30, candidate_word.length())) << "..." << std::flush << RESET;
                 }
-                break;
+
+                std::string current_hash = calculate_hash_openssl(candidate_word, digest_type);
+                if (current_hash == target_hash) {
+                    std::lock_guard<std::mutex> lock(g_cout_mutex);
+                    if (!g_hash_cracked_flag.load()) { // Double-check pour éviter les courses
+                        g_found_password = candidate_word;
+                        g_hash_cracked_flag.store(true);
+                        std::cout << "\r" << std::string(120, ' ') << "\r"; // Efface la ligne de progression
+                        std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
+                    }
+                    break; // Mot de passe trouvé, sortir de la boucle des candidats
+                }
             }
         }
         wordlist_file.close();
     }
 
     if (!g_hash_cracked_flag.load()) {
-        std::cout << "\r" << std::string(80, ' ') << "\r";
+        std::cout << "\r" << std::string(80, ' ') << "\r"; // Nettoie la ligne si pas trouvé
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -462,8 +520,9 @@ void perform_dictionary_attack(const std::string& target_hash, const EVP_MD* dig
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
 
-void generate_combinations_recursive_omp(
-    std::string current_combination,
+// Nouvelle fonction iterative pour le bruteforce (non-récursive)
+void generate_combinations_iterative_threaded(
+    std::string current_prefix,
     int target_length,
     const std::string& charset,
     const std::string& target_hash,
@@ -473,20 +532,23 @@ void generate_combinations_recursive_omp(
         return;
     }
 
-    if (current_combination.length() == target_length) {
+    // Utilise un tableau pour stocker la combinaison courante afin d'éviter des allocations de string coûteuses
+    std::vector<char> combination_chars(target_length);
+    for (size_t k = 0; k < current_prefix.length(); ++k) {
+        combination_chars[k] = current_prefix[k];
+    }
+
+    int start_index_for_remaining = current_prefix.length();
+
+    // Cas où le préfixe est déjà de la longueur cible (très court ou préfixe initial est la cible)
+    if (start_index_for_remaining == target_length) {
         g_total_attempts_bruteforce++;
-
-        if (g_total_attempts_bruteforce % 500000 == 0) {
-            long double estimated_max = calculate_max_attempts(charset.length(), target_length, target_length);
-            draw_progress_bar(g_total_attempts_bruteforce, estimated_max, 50, CR_YELLOW + std::string("[BRUTEFORCE] "), " (" + current_combination.substr(0, std::min((size_t)10, current_combination.length())) + "...) " + RESET);
-        }
-
-        std::string hashed_attempt = calculate_hash_openssl(current_combination, digest_type);
-
+        std::string candidate(combination_chars.begin(), combination_chars.end());
+        std::string hashed_attempt = calculate_hash_openssl(candidate, digest_type);
         if (hashed_attempt == target_hash) {
             std::lock_guard<std::mutex> lock(g_cout_mutex);
             if (!g_hash_cracked_flag.load()) {
-                g_found_password = current_combination;
+                g_found_password = candidate;
                 g_hash_cracked_flag.store(true);
                 std::cout << "\r" << std::string(120, ' ') << "\r";
                 std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
@@ -495,9 +557,59 @@ void generate_combinations_recursive_omp(
         return;
     }
 
-    for (char c : charset) {
+    // Initialisation des indices pour la génération itérative des suffixes
+    std::vector<int> indices(target_length, 0);
+    // Initialiser la partie restante de la combinaison
+    for (int k = start_index_for_remaining; k < target_length; ++k) {
+        combination_chars[k] = charset[0];
+        indices[k] = 0;
+    }
+
+    long long local_attempts = 0; // Compteur local pour chaque thread pour la progression interne plus fine
+    while (true) {
         if (g_hash_cracked_flag.load()) return;
-        generate_combinations_recursive_omp(current_combination + c, target_length, charset, target_hash, digest_type);
+
+        g_total_attempts_bruteforce++; // Incrémenter le compteur global atomique
+        local_attempts++;
+
+        // Affichage de la progression - fait par un seul thread ou à intervalles réguliers
+        if (local_attempts % 500000 == 0) { // Mettre à jour toutes les 500k tentatives pour moins de contention sur le mutex
+            std::string candidate_display(combination_chars.begin(), combination_chars.end());
+            // La barre de progression utilise g_total_attempts_bruteforce pour le total global
+            draw_progress_bar(g_total_attempts_bruteforce.load(), calculate_max_attempts(charset.length(), target_length, target_length), 50, CR_YELLOW + std::string("[BRUTEFORCE] "), " (" + candidate_display.substr(0, std::min((size_t)10, candidate_display.length())) + "...) " + RESET);
+        }
+
+        std::string candidate_password(combination_chars.begin(), combination_chars.end());
+        std::string hashed_attempt = calculate_hash_openssl(candidate_password, digest_type);
+
+        if (hashed_attempt == target_hash) {
+            std::lock_guard<std::mutex> lock(g_cout_mutex);
+            if (!g_hash_cracked_flag.load()) {
+                g_found_password = candidate_password;
+                g_hash_cracked_flag.store(true);
+                std::cout << "\r" << std::string(120, ' ') << "\r"; // Effacer la ligne de progression
+                std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
+            }
+            return; // Mot de passe trouvé, ce thread peut s'arrêter
+        }
+
+        // Générer la prochaine combinaison
+        int current_pos = target_length - 1;
+        while (current_pos >= start_index_for_remaining) {
+            if (indices[current_pos] < charset.length() - 1) {
+                indices[current_pos]++;
+                combination_chars[current_pos] = charset[indices[current_pos]];
+                break;
+            } else {
+                indices[current_pos] = 0;
+                combination_chars[current_pos] = charset[0];
+                current_pos--;
+            }
+        }
+        if (current_pos < start_index_for_remaining) {
+            // Toutes les combinaisons pour ce préfixe ont été générées
+            break;
+        }
     }
 }
 
@@ -526,11 +638,14 @@ void perform_bruteforce_attack(
     unsigned int num_threads_to_use = 1;
 #ifdef _OPENMP
     num_threads_to_use = omp_get_max_threads();
-    if (num_threads_to_use == 0) num_threads_to_use = 2;
+    if (num_threads_to_use == 0) num_threads_to_use = std::thread::hardware_concurrency(); // Fallback to hardware concurrency if OpenMP reports 0
+    if (num_threads_to_use == 0) num_threads_to_use = 2; // Final fallback
 #else
     num_threads_to_use = std::thread::hardware_concurrency();
-    if (num_threads_to_use == 0) num_threads_to_use = 2;
+    if (num_threads_to_use == 0) num_threads_to_use = 2; // Fallback if hardware_concurrency returns 0
 #endif
+
+    display_loading_animation(CR_CYAN + std::string("[BENCHMARK] Warming up hash engine..."), 2000); // Animation avant benchmark
 
     double hashes_per_second = run_benchmark(digest_type, charset_str, num_threads_to_use);
 
@@ -546,11 +661,15 @@ void perform_bruteforce_attack(
         }
     }
 
-    long double estimated_max_attempts = calculate_max_attempts(charset_str.length(), min_len, max_len);
-    std::cout << CR_MAGENTA << "\n[ESTIMATION] Max attempts for full crack: " << format_attempts(estimated_max_attempts) << RESET << std::endl;
+    long double estimated_max_attempts_overall = 0;
+    for (int len = min_len; len <= max_len; ++len) {
+        estimated_max_attempts_overall += calculate_max_attempts(charset_str.length(), len, len);
+    }
+    
+    std::cout << CR_MAGENTA << "\n[ESTIMATION] Max attempts for full crack: " << format_attempts(estimated_max_attempts_overall) << RESET << std::endl;
 
     if (hashes_per_second > 0) {
-        long double estimated_time_seconds = estimated_max_attempts / hashes_per_second;
+        long double estimated_time_seconds = estimated_max_attempts_overall / hashes_per_second;
         std::cout << CR_MAGENTA << "[ESTIMATION] Estimated time for full crack: " << format_time_duration(estimated_time_seconds) << RESET << std::endl;
         std::cout << CR_MAGENTA << "             (This is an estimation and depends on CPU/GPU load and hash complexity)" << RESET << std::endl;
     }
@@ -578,19 +697,65 @@ void perform_bruteforce_attack(
             std::cout << "\n" << CR_CYAN << "[INFO] Testing passwords of length " << len << "..." << RESET << std::endl;
         }
 
+        std::vector<std::string> initial_prefixes;
+        // La longueur du préfixe initial dépend du charset et du nombre de threads
+        // On veut suffisamment de préfixes pour occuper tous les threads.
+        // Si charset.length() < num_threads_to_use, on doit augmenter la longueur du préfixe.
+        int current_prefix_len_for_parallel = 1;
+        while (std::pow(charset_str.length(), current_prefix_len_for_parallel) < num_threads_to_use && current_prefix_len_for_parallel < len) {
+            current_prefix_len_for_parallel++;
+        }
+        if (current_prefix_len_for_parallel > len) current_prefix_len_for_parallel = len; // Ne pas dépasser la longueur cible
+
+        // Génération des préfixes initiaux pour la parallélisation
+        std::vector<int> current_indices(current_prefix_len_for_parallel, 0);
+        while (true) {
+            std::string prefix_str;
+            for (int k = 0; k < current_prefix_len_for_parallel; ++k) {
+                prefix_str += charset_str[current_indices[k]];
+            }
+            initial_prefixes.push_back(prefix_str);
+
+            int pos = current_prefix_len_for_parallel - 1;
+            while (pos >= 0) {
+                if (current_indices[pos] < charset_str.length() - 1) {
+                    current_indices[pos]++;
+                    break;
+                } else {
+                    current_indices[pos] = 0;
+                    pos--;
+                }
+            }
+            if (pos < 0) break; // Toutes les combinaisons de préfixes générées
+        }
+
+        // Si la longueur du mot de passe est égale à la longueur du préfixe de parallélisation,
+        // alors les préfixes sont les mots de passe eux-mêmes.
+        // Ou si aucun préfixe n'a été généré (par exemple charset vide), ajouter un préfixe vide pour que generate_combinations_iterative_threaded gère tout.
+        if (initial_prefixes.empty()) {
+            initial_prefixes.push_back("");
+        }
+
+
 #ifdef _OPENMP
         #pragma omp parallel for shared(g_hash_cracked_flag, g_found_password, g_total_attempts_bruteforce, g_cout_mutex) schedule(dynamic) num_threads(num_threads_to_use)
-#endif
-        for (size_t i = 0; i < charset_str.length(); ++i) {
+        for (long long i = 0; i < initial_prefixes.size(); ++i) {
             if (g_hash_cracked_flag.load()) {
                 continue;
             }
-            std::string initial_string(1, charset_str[i]);
-            generate_combinations_recursive_omp(initial_string, len, charset_str, target_hash, digest_type);
+            // Chaque thread prend un préfixe et génère toutes les combinaisons à partir de ce préfixe jusqu'à la longueur cible
+            generate_combinations_iterative_threaded(initial_prefixes[i], len, charset_str, target_hash, digest_type);
         }
+#else
+        // Implémentation séquentielle si OpenMP n'est pas disponible
+        for (const std::string& prefix : initial_prefixes) {
+            if (g_hash_cracked_flag.load()) break;
+            generate_combinations_iterative_threaded(prefix, len, charset_str, target_hash, digest_type);
+        }
+#endif
 
         if (g_hash_cracked_flag.load()) {
-            std::cout << "\r" << std::string(80, ' ') << "\r";
+            std::cout << "\r" << std::string(80, ' ') << "\r"; // Nettoie la ligne de progression
             break;
         }
     }
@@ -648,13 +813,62 @@ void generate_rainbow_table(
         return;
     }
 
-    std::mt19937 generator_initial_word(std::chrono::system_clock::now().time_since_epoch().count());
+    std::random_device rd;
+    std::mt19937 generator_initial_word(rd()); // Utilise random_device pour un meilleur aléa
     std::uniform_int_distribution<> charset_dist(0, charset.length() - 1);
     std::uniform_int_distribution<> len_dist(min_len, max_len);
 
     auto start_time = std::chrono::high_resolution_clock::now();
     long long generated_chains_count = 0;
 
+    // Parallelisation de la génération de chaînes
+#ifdef _OPENMP
+    #pragma omp parallel num_threads(omp_get_max_threads()) shared(outfile, g_cout_mutex, generated_chains_count, num_chains, charset, min_len, max_len, chain_length, digest_type, charset_dist, len_dist)
+    {
+        // Chaque thread a son propre générateur pour éviter la contention et garantir l'indépendance
+        std::mt19937 thread_local_generator(rd() ^ omp_get_thread_num());
+        std::uniform_int_distribution<> thread_local_charset_dist(0, charset.length() - 1);
+        std::uniform_int_distribution<> thread_local_len_dist(min_len, max_len);
+
+        // Les threads traitent des portions du nombre total de chaînes
+        #pragma omp for schedule(dynamic)
+        for (long long i = 0; i < num_chains; ++i) {
+            int current_len_for_reduction = thread_local_len_dist(thread_local_generator);
+
+            std::string start_word = "";
+            for (int k = 0; k < current_len_for_reduction; ++k) {
+                start_word += charset[thread_local_charset_dist(thread_local_generator)];
+            }
+
+            std::string current_word_in_chain = start_word;
+            std::string current_hash_in_chain;
+
+            for (int j = 0; j < chain_length; ++j) {
+                current_hash_in_chain = calculate_hash_openssl(current_word_in_chain, digest_type);
+                if (j == chain_length - 1) { // Dernière étape de la chaîne
+                    break;
+                }
+                current_word_in_chain = reduce_hash(current_hash_in_chain, current_len_for_reduction, charset, j);
+            }
+
+            // Écriture thread-safe dans le fichier
+            {
+                std::lock_guard<std::mutex> lock(g_cout_mutex); // Utilise g_cout_mutex pour outfile aussi
+                outfile << start_word << ":" << current_hash_in_chain << "\n";
+            }
+
+            // Mise à jour du compteur global et de la barre de progression
+            #pragma omp critical
+            {
+                generated_chains_count++;
+                if (generated_chains_count % 10000 == 0) { // Mise à jour moins fréquente pour moins de contention
+                    draw_progress_bar(generated_chains_count, num_chains, 50, CR_YELLOW + std::string("[GENERATION] "), " (" + start_word.substr(0, std::min((size_t)15, start_word.length())) + "...) " + RESET);
+                }
+            }
+        }
+    }
+#else
+    // Implémentation séquentielle si OpenMP n'est pas activé
     for (long long i = 0; i < num_chains; ++i) {
         int current_len_for_reduction = len_dist(generator_initial_word);
 
@@ -677,13 +891,14 @@ void generate_rainbow_table(
         outfile << start_word << ":" << current_hash_in_chain << "\n";
         generated_chains_count++;
 
-        if (generated_chains_count % 1000 == 0) {
+        if (generated_chains_count % 10000 == 0) {
             draw_progress_bar(generated_chains_count, num_chains, 50, CR_YELLOW + std::string("[GENERATION] "), " (" + start_word.substr(0, std::min((size_t)15, start_word.length())) + "...) " + RESET);
         }
     }
+#endif
 
     outfile.close();
-    std::cout << "\r" << std::string(80, ' ') << "\r";
+    std::cout << "\r" << std::string(80, ' ') << "\r"; // Nettoie la ligne de progression
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
@@ -691,6 +906,7 @@ void generate_rainbow_table(
     std::cout << CR_GREEN << "[COMPLETED] Rainbow table generated in " << std::fixed << std::setprecision(2) << duration.count() << " seconds. (" << format_attempts(generated_chains_count) << " chains saved)" << RESET << std::endl;
     std::cout << CR_BLUE << "---------------------------------------" << RESET << std::endl;
 }
+
 
 void perform_rainbow_attack(const std::string& target_hash, const std::string& rainbow_table_path, const EVP_MD* digest_type, const std::string& charset_for_reduction, int chain_length, int assumed_min_len, int assumed_max_len) {
     std::cout << "\n" << CR_BLUE << ">>> [SCANNING] Initiating Rainbow Table Attack..." << RESET << std::endl;
@@ -748,7 +964,7 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
     }
     rainbow_table_file.close();
 
-    std::cout << "\r" << std::string(80, ' ') << "\r";
+    std::cout << "\r" << std::string(80, ' ') << "\r"; // Nettoie la ligne de chargement
     auto load_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> load_duration = load_end_time - load_start_time;
     std::cout << CR_GREEN << "[LOADED] Rainbow table loaded. " << format_attempts(loaded_entries) << " entries in " << std::fixed << std::setprecision(2) << load_duration.count() << " seconds." << RESET << std::endl;
@@ -757,6 +973,64 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
     auto crack_start_time = std::chrono::high_resolution_clock::now();
     bool cracked = false;
 
+    // Parallelisation de la recherche dans la table arc-en-ciel
+#ifdef _OPENMP
+    #pragma omp parallel for shared(g_hash_cracked_flag, g_found_password, g_cout_mutex, target_hash, rainbow_map, digest_type, charset_for_reduction, chain_length, assumed_min_len, assumed_max_len, cracked) schedule(dynamic)
+    for (int current_len_for_reduction = assumed_min_len; current_len_for_reduction <= assumed_max_len; ++current_len_for_reduction) {
+        if (g_hash_cracked_flag.load()) {
+            continue; // Sortir si déjà trouvé par un autre thread/itération
+        }
+
+        // Itération sur la longueur de la chaîne pour le parcours arrière
+        for (int i = 0; i < chain_length; ++i) {
+            if (g_hash_cracked_flag.load()) {
+                break;
+            }
+
+            std::string current_hash_in_walk = target_hash;
+            std::string current_word_in_walk;
+
+            // Parcours de la chaîne "virtuelle" vers l'arrière
+            for (int j = i; j < chain_length; ++j) {
+                current_word_in_walk = reduce_hash(current_hash_in_walk, current_len_for_reduction, charset_for_reduction, j);
+                current_hash_in_walk = calculate_hash_openssl(current_word_in_walk, digest_type);
+            }
+
+            // Vérifier si la fin de chaîne calculée est dans la table
+            if (rainbow_map.count(current_hash_in_walk)) {
+                std::string start_word_from_table = rainbow_map[current_hash_in_walk];
+                std::string potential_password = start_word_from_table;
+
+                // Re-calculer la chaîne à partir du mot de départ pour trouver le mot de passe original
+                for (int k = 0; k <= i; ++k) {
+                    std::string hashed_potential = calculate_hash_openssl(potential_password, digest_type);
+                    if (hashed_potential == target_hash) {
+                        std::lock_guard<std::mutex> lock(g_cout_mutex);
+                        if (!g_hash_cracked_flag.load()) {
+                            g_found_password = potential_password;
+                            g_hash_cracked_flag.store(true);
+                            cracked = true; // Indiquer que le mot de passe est trouvé
+                            std::cout << "\r" << std::string(120, ' ') << "\r";
+                            std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
+                        }
+                        break; // Sortir de la boucle k
+                    }
+                    if (k < i) { // Ne réduire que si ce n'est pas la dernière étape
+                        potential_password = reduce_hash(hashed_potential, current_len_for_reduction, charset_for_reduction, k);
+                    }
+                }
+                if (cracked) break; // Sortir de la boucle i
+            }
+
+            // Mettre à jour la barre de progression (un thread à la fois pour éviter le défilement)
+            #pragma omp critical
+            {
+                draw_progress_bar(i, chain_length, 50, CR_YELLOW + std::string("[CRACKING] "), " (Pos: " + std::to_string(i) + "/" + std::to_string(chain_length) + ", Len: " + std::to_string(current_len_for_reduction) + ") " + RESET);
+            }
+        }
+    }
+#else
+    // Implémentation séquentielle si OpenMP n'est pas activé
     for (int current_len_for_reduction = assumed_min_len; current_len_for_reduction <= assumed_max_len; ++current_len_for_reduction) {
         if (g_hash_cracked_flag.load()) break;
 
@@ -782,10 +1056,10 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
                         if (!g_hash_cracked_flag.load()) {
                             g_found_password = potential_password;
                             g_hash_cracked_flag.store(true);
+                            cracked = true;
                             std::cout << "\r" << std::string(120, ' ') << "\r";
                             std::cout << CR_GREEN << "[SUCCESS] Hash Cracked! Password Found: " << BOLD << g_found_password << RESET << std::endl;
                         }
-                        cracked = true;
                         break;
                     }
                     if (k < i) {
@@ -795,13 +1069,14 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
                 if (cracked) break;
             }
 
-            if (i % 100 == 0) {
+            if (i % 100 == 0) { // Mettre à jour la barre de progression
                 draw_progress_bar(i, chain_length, 50, CR_YELLOW + std::string("[CRACKING] "), " (Pos: " + std::to_string(i) + "/" + std::to_string(chain_length) + ", Len: " + std::to_string(current_len_for_reduction) + ") " + RESET);
             }
         }
     }
+#endif
 
-    std::cout << "\r" << std::string(100, ' ') << "\r";
+    std::cout << "\r" << std::string(100, ' ') << "\r"; // Nettoie la barre de progression
 
     auto crack_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> crack_duration = crack_end_time - crack_start_time;
@@ -817,10 +1092,10 @@ int main() {
     ERR_load_crypto_strings();
     OpenSSL_add_all_digests();
 
-    display_matrix_effect(10, 20);
+    display_matrix_effect(10, 20); // Un peu plus de lignes pour l'effet
 
     while (true) {
-        std::cout << "\033[H\033[J";
+        std::cout << "\033[H\033[J"; // Clear screen at start of loop
 
         const int terminal_width = 80;
         std::string title = "Hashcracker-V.CPP";
@@ -873,6 +1148,7 @@ int main() {
         std::cin >> attack_choice;
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
+        // Réinitialiser les drapeaux pour chaque nouvelle tentative
         g_hash_cracked_flag.store(false);
         g_found_password = "";
         g_total_attempts_bruteforce = 0;
@@ -889,7 +1165,7 @@ int main() {
             predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
             predefined_charsets[3] = {"Lowercase + Uppercase (a-z, A-Z)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
-            predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
+            predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%&*)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
 
             simulate_typing("   Choose a predefined charset or enter your own:", 10);
@@ -965,7 +1241,7 @@ int main() {
             predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
             predefined_charsets[3] = {"Lowercase + Uppercase (a-z, A-Z)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
-            predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
+            predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%&*)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
 
             simulate_typing("   Choose the charset used during table generation:", 10);
@@ -1051,7 +1327,7 @@ int main() {
             predefined_charsets[2] = {"Lowercase + Digits (a-z, 0-9)", "abcdefghijklmnopqrstuvwxyz0123456789"};
             predefined_charsets[3] = {"Lowercase + Uppercase (a-z, A-Z)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
             predefined_charsets[4] = {"Lowercase + Uppercase + Digits (a-z, A-Z, 0-9)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
-            predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"};
+            predefined_charsets[5] = {"All common characters (a-z, A-Z, 0-9, !@#$%&*)", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*"};
             predefined_charsets[6] = {"Numbers only (0-9)", "0123456789"};
 
             simulate_typing("   Choose a predefined charset or enter your own:", 10);
@@ -1133,7 +1409,7 @@ int main() {
                 continue;
             }
 
-            long double estimated_file_size_bytes = (long double)num_chains_gen * ((long double)min_len_gen + (EVP_MD_size(digest_algo_gen) * 2) + 2);
+            long double estimated_file_size_bytes = (long double)num_chains_gen * ((long double)max_len_gen + (EVP_MD_size(digest_algo_gen) * 2) + 2); // Estimer avec max_len
             simulate_typing("\n[INFO] Generating a table of " + format_attempts(num_chains_gen) + " chains, each " + std::to_string(chain_length_gen) + " steps long.", 10);
             std::cout << CR_MAGENTA << "       This will result in a file size of approximately "
                       << std::fixed << std::setprecision(2)
