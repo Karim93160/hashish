@@ -160,5 +160,9 @@ echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
 pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
 sleep 3 # Laisse le temps de lire les messages de fin d'installation
 
-# Lancement automatique de Hashish
-hashish
+# --- START OF FIX ---
+# Instead of directly calling 'hashish', use 'exec' to replace the current shell
+# process with the hashish command. This ensures the new process inherits
+# the terminal's input/output correctly.
+exec hashish
+# --- END OF FIX ---
