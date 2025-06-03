@@ -179,6 +179,32 @@ For any questions or suggestions, don't hesitate to open an [issue on GitHub](ht
 [![Contact by Email](https://img.shields.io/badge/Contact-by%20Email-blue.svg)](mailto:karim9316077185@gmail.com)
 
 _________
+<div align="center">
+  <h2>🌿 Hashish - Code of Conduct 🌿</h2>
+  <p>
+    We are committed to creating a welcoming and respectful environment for all contributors.
+    Please take a moment to read our <a href="CODE_OF_CONDUCT.md">Code of Conduct</a>.
+    By participating in this project, you agree to abide by its terms.
+  </p>
+  <p>
+    <a href="CODE_OF_CONDUCT.md">
+      <img src="https://img.shields.io/badge/Code%20of%20Conduct-Please%20Read-blueviolet?style=for-the-badge&logo=github" alt="Code of Conduct">
+    </a>
+  </p>
+</div>
+
+<div align="center">
+  <h2>🐞 Report a Bug in Hashish 🐞</h2>
+  <p>
+    Encountering an issue with Hashish? Help us improve the project by reporting bugs!
+    Click the button below to directly open a new, pre-filled bug report.
+  </p>
+  <p>
+    <a href="https://github.com/karim93160/hashish/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=">
+      <img src="https://img.shields.io/badge/Report%20a%20Bug-Open%20an%20Issue-red?style=for-the-badge&logo=bugsnag" alt="Report a Bug">
+    </a>
+  </p>
+</div>
 
 **⚠️ Warning**
 
