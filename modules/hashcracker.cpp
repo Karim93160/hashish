@@ -189,7 +189,10 @@ std::string format_time_duration(long double seconds) {
     return ss.str();
 }
 
-double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int num_threads) {
+double run_benchmark(const EVP_MD* digest_type, int num_threads) {
+    // Le paramètre 'charset' n'est pas utilisé dans cette fonction, il est donc retiré.
+    // L'entrée 'test_input_base' est une chaîne de caractères simple pour le benchmark.
+
     std::cout << CR_CYAN << "\n[BENCHMARK] Running a quick benchmark to estimate speed..." << RESET << std::endl;
     const int benchmark_attempts_per_thread = 50000;
     std::atomic<long long> benchmark_total_hashes(0);
