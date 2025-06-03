@@ -9,6 +9,19 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 INFO='\033[0;34m' # Alias de BLUE pour les infos
 
+# --- Variables de contrôle ---
+AUTO_INSTALL=false # Nouvelle variable pour contrôler l'installation automatique
+
+# --- Gestion des arguments de ligne de commande ---
+for arg in "$@"; do
+    case "$arg" in
+        --auto)
+            AUTO_INSTALL=true
+            ;;
+        # Ajoutez d'autres options si nécessaire
+    esac
+done
+
 # --- Fonctions Utilitaires ---
 
 # Fonction pour effacer l'écran
@@ -70,22 +83,34 @@ if [ -z "$REPO_PATH" ] && [ -d "$DEFAULT_REPO_PATH" ]; then
     echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à l'emplacement par défaut : ${REPO_PATH}${NC}"
 fi
 
-# Si le dépôt n'est toujours pas trouvé, demande à l'utilisateur
+# Si le dépôt n'est toujours pas trouvé, demande à l'utilisateur ou utilise le chemin par défaut en mode auto
 if [ -z "$REPO_PATH" ]; then
-    echo -e "${RED}Erreur : Le répertoire '$REPO_NAME' est introuvable ni à l'emplacement actuel ni à l'emplacement par défaut (${DEFAULT_REPO_PATH}).${NC}"
-    read -p "Voulez-vous entrer le chemin **complet** du dossier '$REPO_NAME' manuellement ? (o/n) : " confirm
-    if [[ "$confirm" =~ ^[oO]$ ]]; then
-        read -p "Veuillez entrer le chemin **complet** du dossier '$REPO_NAME' (ex: /sdcard/Hashish) : " CUSTOM_REPO_PATH
-        if [ -n "$CUSTOM_REPO_PATH" ] && [ -d "$CUSTOM_REPO_PATH" ]; then
-            REPO_PATH="$CUSTOM_REPO_PATH"
-            echo -e "${GREEN}Chemin du dépôt '${REPO_NAME}' défini manuellement : ${REPO_PATH}${NC}"
+    if [ "$AUTO_INSTALL" = true ]; then
+        echo -e "${YELLOW}Mode automatique détecté. Tentative d'utilisation du chemin par défaut si le dépôt n'est pas trouvé.${NC}"
+        if [ -d "$DEFAULT_REPO_PATH" ]; then
+            REPO_PATH="$DEFAULT_REPO_PATH"
+            echo -e "${GREEN}Chemin du dépôt '${REPO_NAME}' défini automatiquement à l'emplacement par défaut : ${REPO_PATH}${NC}"
         else
-            echo -e "${RED}Chemin invalide ou dossier introuvable. Installation annulée.${NC}"
+            echo -e "${RED}Erreur : Le répertoire '$REPO_NAME' est introuvable ni à l'emplacement actuel ni à l'emplacement par défaut (${DEFAULT_REPO_PATH}).${NC}"
+            echo -e "${RED}L'installation automatique ne peut pas continuer sans un chemin de dépôt valide.${NC}"
             exit 1
         fi
     else
-        echo -e "${RED}Installation annulée. Impossible de trouver le dossier du dépôt.${NC}"
-        exit 1
+        echo -e "${RED}Erreur : Le répertoire '$REPO_NAME' est introuvable ni à l'emplacement actuel ni à l'emplacement par défaut (${DEFAULT_REPO_PATH}).${NC}"
+        read -p "Voulez-vous entrer le chemin **complet** du dossier '$REPO_NAME' manuellement ? (o/n) : " confirm
+        if [[ "$confirm" =~ ^[oO]$ ]]; then
+            read -p "Veuillez entrer le chemin **complet** du dossier '$REPO_NAME' (ex: /sdcard/Hashish) : " CUSTOM_REPO_PATH
+            if [ -n "$CUSTOM_REPO_PATH" ] && [ -d "$CUSTOM_REPO_PATH" ]; then
+                REPO_PATH="$CUSTOM_REPO_PATH"
+                echo -e "${GREEN}Chemin du dépôt '${REPO_NAME}' défini manuellement : ${REPO_PATH}${NC}"
+            else
+                echo -e "${RED}Chemin invalide ou dossier introuvable. Installation annulée.${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}Installation annulée. Impossible de trouver le dossier du dépôt.${NC}"
+            exit 1
+        fi
     fi
 else
     echo -e "${INFO}Dépôt '${REPO_NAME}' détecté à : ${REPO_PATH}${NC}\n"
@@ -100,8 +125,8 @@ WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists"
 echo -e "${BLUE}Vérification et installation des prérequis système (clang, openssl, git, python, etc.)...${NC}"
 
 # Liste des paquets essentiels pour Termux
-# Remplacer build-essential par clang car Termux utilise clang/llvm
-REQUIRED_PKGS=("clang" "openssl" "openssl-tool" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils" "libomp") # Ajout de libomp pour OpenMP
+# Suppression de 'libomp' de cette liste
+REQUIRED_PKGS=("clang" "openssl" "openssl-tool" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
 
 for pkg_name in "${REQUIRED_PKGS[@]}"; do
     if ! dpkg -s "$pkg_name" &>/dev/null; then
@@ -205,8 +230,6 @@ for file in "${CPP_SOURCE_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Traitement de $file...${NC}"
         # Correction de la fonction 'reduce_hash'
-        # Assurez-vous que le motif à remplacer est bien celui attendu dans vos fichiers.
-        # Ce `sed` est plus précis pour le pattern que vous avez montré qui est `std::seed_seq seed_sequence(hash.begin(), hash.end());`
         if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
              sed -i "s#std::seed_seq seed_sequence(hash.begin(), hash.end());#${REDUCTION_SED_PATTERN}#g" "$file"
              echo -e "${GREEN}Correction de 'reduce_hash' appliquée à $file.${NC}"
@@ -247,23 +270,22 @@ compile_cpp_module() {
     local module_name=$(basename "$source_file" .cpp)
 
     # Flags de compilation spécifiques à Termux avec clang++
-    # Inclut les chemins d'en-tête et de bibliothèques Termux pour OpenSSL et autres
     local base_compilation_flags="-O3 -std=c++17 -Wall -pedantic"
     local includes_libs="-I/data/data/com.termux/files/usr/include -L/data/data/com.termux/files/usr/lib"
-    local common_link_libs="-lssl -lcrypto -lpthread -lm" # -lpthread et -lm sont importants pour la robustesse
+    local common_link_libs="-lssl -lcrypto -lpthread -lm"
 
     local compilation_flags="$base_compilation_flags $includes_libs $common_link_libs"
 
     # Ajout de -fopenmp si le module l'utilise (par exemple hashcracker.cpp)
+    # Note: La prise en charge d'OpenMP est gérée par clang et n'a pas besoin d'une libomp séparée sur Termux.
     if [[ "$module_name" == "hashcracker" ]]; then
-        compilation_flags+=" -lstdc++fs -fopenmp" # -lstdc++fs pour filesystem, -fopenmp pour OpenMP
+        compilation_flags+=" -lstdc++fs -fopenmp"
     fi
 
     echo -e "${BLUE}Vérification et compilation du module C++ '${module_name}.cpp'...${NC}"
     if [ -f "$source_file" ]; then
         echo -e "${INFO}Fichier source C++ '${module_name}.cpp' trouvé : $source_file.${NC}"
         echo -e "${CYAN}Lancement de la compilation de $source_file vers $temp_executable...${NC}"
-        # Utiliser clang++ au lieu de g++ pour une meilleure compatibilité Termux
         local compilation_cmd="clang++ \"$source_file\" -o \"$temp_executable\" ${compilation_flags}"
         echo -e "${CYAN}Commande de compilation exécutée : ${compilation_cmd}${NC}"
 
