@@ -148,22 +148,16 @@ echo -e "${G}  ✓ Permissions configured${NC}\n"
 pretty_print $Y "" "  [6/6] Creating launcher..."
 cat > "$INSTALL_DIR/hashish" <<EOF
 #!/bin/bash
-# Check if banner exists (this check is for the Python script, not the launcher)
-# The Python script handles banner display.
 exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${G}  ✓ Launcher created${NC}\n"
 
-# Installation complete
+# Installation complete - Message to user
 echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complete!"
 echo -e "${M}  HASHISH is now ready to use.${NC}\n"
+echo -e "${Y}  To start Hashish, simply type:${NC}"
+echo -e "    ${B}hashish${NC}\n"
+echo -e "${Y}  You may need to open a new Termux session for the command to be available.${NC}\n"
 
-# Auto-launch HASHISH
-pretty_print $W $BLINK "  Launching HASHISH in 3 seconds..."
-sleep 3
-clear_terminal # Ensure terminal is clear before launch
-hashish # Attempt to launch hashish
-# If for some reason hashish fails to launch, the user will see the previous output
-# and can try to launch it manually.
