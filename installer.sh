@@ -6,7 +6,7 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-INFO='\033[0;34m'
+INFO='\033[0;34m' # Déjà défini mais explicitement mentionné dans ton code
 
 clear_screen() {
     if command -v clear &>/dev/null; then
@@ -71,7 +71,7 @@ fi
 
 INSTALL_DIR="/data/data/com.termux/files/usr/bin"
 MODULES_TARGET_DIR="$INSTALL_DIR/modules"
-WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists"
+WORDLISTS_TARGET_DIR="$MODULES_TARGET_DIR/wordlists" # Ton original place wordlists ici, c'est logique
 
 echo -e "${BLUE}Vérification et installation des prérequis système (build-essential, openssl, ncurses-utils)...${NC}"
 
@@ -87,12 +87,28 @@ install_package() {
     fi
 }
 
+# Vérifier et installer les dépendances C++ et Python
+# Ajout de `clang` et `python` à la liste des packages à installer.
+# `build-essential` installe g++ et make, mais je le vérifie explicitement aussi.
+REQUIRED_PKGS=("clang" "g++" "make" "openssl" "libssl-dev" "git" "python")
+for pkg_name in "${REQUIRED_PKGS[@]}"; do
+    if ! dpkg -s "$pkg_name" &>/dev/null; then
+        echo -e "${YELLOW}Paquet '${pkg_name}' non trouvé. Installation de '${pkg_name}'...${NC}"
+        install_package "$pkg_name" || { echo -e "${RED}Installation annulée. Le paquet '${pkg_name}' est nécessaire.${NC}"; exit 1; }
+    else
+        echo -e "${GREEN}Paquet '${pkg_name}' est déjà installé.${NC}"
+    fi
+done
+
+# Vérification spécifique pour build-essential/g++ (redondant mais suit ta logique)
 if ! command -v g++ &> /dev/null; then
     echo -e "${YELLOW}Compilateur g++ non trouvé. Installation de 'build-essential'...${NC}"
     install_package "build-essential" || { echo -e "${RED}Installation annulée. 'build-essential' est nécessaire pour compiler les modules C++.${NC}"; exit 1; }
+else
+    echo -e "${GREEN}Compilateur g++ est déjà disponible.${NC}"
 fi
 
-if ! pkg list-installed | grep -q "^openssl/"; then
+if ! pkg list-installed | grep -q "^openssl/"; then # Vérifie openssl via pkg list-installed
     echo -e "${YELLOW}OpenSSL non trouvé. Nécessaire pour la compilation C++. Installation de 'openssl'...${NC}"
     install_package "openssl" || { echo -e "${RED}Installation annulée. 'openssl' est nécessaire pour compiler les modules C++.${NC}"; exit 1; }
 else
@@ -128,7 +144,7 @@ if [ ! -d "$REPO_PATH" ]; then
   exit 1
 fi
 if [ ! -f "$REPO_PATH/hashish.py" ]; then
-  echo -e "${RED}Erreur : 'hashish.py' introuvable dans '$REPO_PATH'. Assurez-ou que le fichier est présent et nommé correctement.${NC}"
+  echo -e "${RED}Erreur : 'hashish.py' introuvable dans '$REPO_PATH'. Assurez-vous que le fichier est présent et nommé correctement.${NC}"
   exit 1
 fi
 if [ ! -d "$REPO_PATH/modules" ]; then
@@ -193,18 +209,23 @@ CPP_FILES=("$REPO_PATH/modules/hashcracker.cpp")
 for file in "${CPP_FILES[@]}"; do
     if [ -f "$file" ]; then
         echo -e "${INFO}Correction de $file...${NC}"
-        # La correction de la fonction reduce_hash est légèrement différente de ce qui était dans le script.
-        # Pour le code C++ fourni, la partie 'std::seed_seq seed_sequence(hash.begin(), hash.end());'
-        # n'est pas présente. La partie à remplacer est la génération du seed pour std::mt19937.
-        # Le code C++ utilise actuellement std::hash<std::string> et std::mt19937.
-        # Si une modification pour std::seed_seq était prévue, elle devrait être appliquée si le code
-        # C++ correspondait à cette implémentation.
-        # Ici, nous nous assurons que la correction est pertinente pour le code actuel.
-        # Au vu du code C++ fourni, la sédation n'est pas nécessaire car il n'y a pas la ligne
-        # 'std::seed_seq seed_sequence(hash.begin(), hash.end());'
-        # Je vais commenter la partie sed car elle ne s'applique pas directement au code fourni.
-        # Si une future version du code C++ l'inclut, cette partie devra être réactivée et ajustée.
-        echo -e "${INFO}Pas de correction de 'reduce_hash' nécessaire pour le code C++ fourni.${NC}"
+        # La correction spécifique pour reduce_hash
+        # J'ai remis la section sed comme dans ton script original.
+        # Si le code est déjà corrigé, cela ne fera rien de mal car grep ne trouvera pas le motif.
+        if grep -q "std::seed_seq seed_sequence(hash.begin(), hash.end());" "$file"; then
+            sed -i '/std::string reduced_string = "";/{
+                N;N;N;N;N;N;N;N;N;
+                s/std::seed_seq seed_sequence(hash.begin(), hash.end());/\
+std::vector<unsigned int> seed_data;\
+for (char c : hash) { seed_data.push_back(static_cast<unsigned int>(c)); }\
+seed_data.push_back(static_cast<unsigned int>(r_index));\
+\
+std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
+            }' "$file"
+            echo -e "${GREEN}Correction appliquée à $file.${NC}"
+        else
+            echo -e "${INFO}La correction de $file ne semble pas nécessaire (déjà appliquée ou motif non trouvé).${NC}"
+        fi
     else
         echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
     fi
@@ -212,29 +233,27 @@ done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
-HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp"
-HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker"
+HASHCRACKER_TEMP_EXECUTABLE="$REPO_PATH/modules/hashcracker_temp" # Compile vers un temp dans le dépôt
+HASHCRACKER_FINAL_EXECUTABLE="$MODULES_TARGET_DIR/hashcracker" # Déplace vers la cible dans usr/bin/modules
 
 echo -e "${BLUE}Vérification et compilation du module C++ 'hashcracker.cpp'...${NC}"
 
 if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
   echo -e "${INFO}Fichier source C++ 'hashcracker.cpp' trouvé : $HASHCRACKER_CPP_SOURCE.${NC}"
 
-  # Définir les chemins d'inclusion et de bibliothèque pour OpenSSL
-  # Termux place les fichiers d'en-tête et les bibliothèques OpenSSL dans /data/data/com.termux/files/usr/include et /data/data/com.termux/files/usr/lib respectivement.
-  OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
-  OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
+  # OPENSSL_INCLUDE_PATH et OPENSSL_LIB_PATH ne sont généralement pas nécessaires
+  # si les paquets `openssl` et `libssl-dev` sont installés, g++ les trouve automatiquement.
+  # Je les laisse en commentaire pour info mais ne les utilise pas directement dans la commande.
+  # OPENSSL_INCLUDE_PATH="/data/data/com.termux/files/usr/include"
+  # OPENSSL_LIB_PATH="/data/data/com.termux/files/usr/lib"
 
   echo -e "${CYAN}Lancement de la compilation de $HASHCRACKER_CPP_SOURCE vers $HASHCRACKER_TEMP_EXECUTABLE avec les options pour Termux...${NC}"
-  echo -e "${CYAN}Commande de compilation : g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic ${NC}"
+  # Commande de compilation. Ajout de `-std=c++17` pour la compatibilité, `-O3` pour l'optimisation, `-fopenmp` pour OpenMP.
+  # `-lssl` et `-lcrypto` pour OpenSSL sont cruciaux. `-Wall -pedantic` pour les avertissements.
+  COMPILE_COMMAND="g++ \"$HASHCRACKER_CPP_SOURCE\" -o \"$HASHCRACKER_TEMP_EXECUTABLE\" -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic"
+  echo -e "${CYAN}Commande de compilation : ${COMPILE_COMMAND}${NC}"
 
-  # La bonne commande de compilation doit inclure les chemins d'inclusion (-I) et de bibliothèque (-L) pour OpenSSL
-  # et lier les bibliothèques ssl et crypto.
-  # Utilise aussi -fopenmp pour OpenMP et -std=c++17 pour le support des fonctionnalités C++ modernes.
-  if g++ "$HASHCRACKER_CPP_SOURCE" -o "$HASHCRACKER_TEMP_EXECUTABLE" \
-     -I"$OPENSSL_INCLUDE_PATH" -L"$OPENSSL_LIB_PATH" \
-     -O3 -fopenmp -lssl -lcrypto -std=c++17 -Wall -pedantic; then
-
+  if $COMPILE_COMMAND; then # Exécute la commande de compilation
     echo -e "${GREEN}Module C++ hashcracker compilé avec succès vers : $HASHCRACKER_TEMP_EXECUTABLE${NC}"
 
     if [ ! -d "$MODULES_TARGET_DIR" ]; then
@@ -282,7 +301,7 @@ if [ -f "$RAINBOW_GENERATOR_OLD_EXECUTABLE" ]; then
     echo -e "${GREEN}Ancien rainbow_generator supprimé.${NC}\n"
 fi
 
-RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt"
+RAINBOW_TXT_PATH="$MODULES_TARGET_DIR/rainbow.txt" # Garder la même logique que ton script pour le placement de rainbow.txt
 echo -e "${BLUE}Vérification et création du fichier rainbow.txt...${NC}"
 if [ ! -f "$RAINBOW_TXT_PATH" ]; then
     touch "$RAINBOW_TXT_PATH" || { echo -e "${RED}Erreur: Impossible de créer le fichier rainbow.txt à $RAINBOW_TXT_PATH. Vérifiez les permissions.${NC}"; }
@@ -292,20 +311,21 @@ else
 fi
 
 echo -e "${BLUE}Attribution des permissions aux modules...${NC}"
-chmod +x "$REPO_PATH/hashish.py"
-# Les fichiers .cpp ne doivent pas être exécutables en tant que tels s'ils sont compilés.
-# Seul l'exécutable compilé doit avoir les permissions d'exécution.
-# J'ai commenté ces lignes, car donner des droits d'exécution à un fichier source C++ n'est pas standard.
-# chmod +x "$REPO_PATH/modules/hash_recon.cpp"
-# chmod +x "$REPO_PATH/modules/hashcracker.cpp"
-# chmod +x "$REPO_PATH/modules/rainbow_generator.cpp"
-chmod +x "$REPO_PATH/modules/web_scanner.py"
-chmod +x "$REPO_PATH/modules/osint.py"
-chmod +x "$REPO_PATH/modules/recon.py"
-chmod +r "$REPO_PATH/modules/hash_recon.h" # .h files typically only need read permissions
-echo -e "${GREEN}Permissions accordées aux fichiers spécifiés.${NC}\n"
+chmod +x "$REPO_PATH/hashish.py" # Ce fichier sera copié, les permissions seront appliquées à la copie par la suite
+# Pour les fichiers C++ et Python dans le dossier 'modules'
+chmod +x "$REPO_PATH/modules/hash_recon.cpp" 2>/dev/null || true # Utilise 2>/dev/null pour éviter les erreurs si le fichier n'existe pas
+chmod +x "$REPO_PATH/modules/hashcracker.cpp" 2>/dev/null || true
+chmod +x "$REPO_PATH/modules/rainbow_generator.cpp" 2>/dev/null || true
+chmod +x "$REPO_PATH/modules/web_scanner.py" 2>/dev/null || true
+chmod +x "$REPO_PATH/modules/osint.py" 2>/dev/null || true
+chmod +x "$REPO_PATH/modules/recon.py" 2>/dev/null || true
+chmod +r "$REPO_PATH/modules/hash_recon.h" 2>/dev/null || true # .h files typically only need read permissions
+echo -e "${GREEN}Permissions accordées aux fichiers spécifiés dans le REPO_PATH.${NC}\n"
+echo -e "${GREEN}Note: Les permissions pour les fichiers copiés dans $INSTALL_DIR et $MODULES_TARGET_DIR sont définies séparément.${NC}\n"
+
 
 echo -e "${BLUE}Création d'un script exécutable global...${NC}"
+# Le wrapper sera dans $INSTALL_DIR et lancera hashish.py qui est aussi dans $INSTALL_DIR
 cat > "$INSTALL_DIR/hashish" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 clear_screen_func() {
