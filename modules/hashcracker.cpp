@@ -60,6 +60,27 @@ std::atomic<bool> g_hash_cracked_flag(false);
 std::string g_found_password;
 std::mutex g_cout_mutex;
 std::atomic<long long> g_total_attempts_bruteforce(0);
+std::atomic<bool> g_matrix_running(false);
+void run_matrix_animation() {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<> dist(0, 100);
+    std::string chars = "0123456789ABCDEF";
+    std::uniform_int_distribution<> char_dist(0, chars.length() - 1);
+    while (g_matrix_running.load()) {
+        std::string line;
+        for (int i = 0; i < 40; ++i) {
+            if (dist(generator) < 80) {
+                line += CR_DARK_GRAY;
+            } else {
+                line += CR_GREEN;
+            }
+            line += chars[char_dist(generator)];
+        }
+        std::cout << line << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
 std::string bytes_to_hex_string(const unsigned char* bytes, size_t len) {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
@@ -399,11 +420,13 @@ void perform_bruteforce_attack(
     g_total_attempts_bruteforce = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
     std::cout << CR_DARK_GRAY << "    Using " << num_threads_to_use << " threads." << RESET << std::endl;
+    g_matrix_running.store(true);
+    std::thread matrix_thread(run_matrix_animation);
     for (int len = min_len; len <= max_len; ++len) {
         if (g_hash_cracked_flag.load()) break;
         {
             std::lock_guard<std::mutex> lock(g_cout_mutex);
-            std::cout << "\n" << CR_CYAN << "[INFO] Testing passwords of length " << len << "..." << RESET << std::endl;
+            std::cout << "\r" << CR_CYAN << "[INFO] Testing passwords of length " << len << "..." << RESET << std::endl;
         }
         #ifdef _OPENMP
         #pragma omp parallel for shared(g_hash_cracked_flag, g_found_password, g_total_attempts_bruteforce, g_cout_mutex) schedule(dynamic) num_threads(num_threads_to_use)
@@ -420,6 +443,11 @@ void perform_bruteforce_attack(
             break;
         }
     }
+    g_matrix_running.store(false);
+    if (matrix_thread.joinable()) {
+        matrix_thread.join();
+    }
+    std::cout << "\033[H\033[J";
     if (!g_hash_cracked_flag.load()) {
         std::cout << "\r" << std::string(80, ' ') << "\r";
         std::cout << CR_YELLOW << "[INFO] Hash not cracked using bruteforce." << RESET << std::endl;
@@ -472,6 +500,8 @@ void generate_rainbow_table(
     std::uniform_int_distribution<> len_dist(min_len, max_len);
     auto start_time = std::chrono::high_resolution_clock::now();
     long long generated_chains_count = 0;
+    g_matrix_running.store(true);
+    std::thread matrix_thread(run_matrix_animation);
     for (long long i = 0; i < num_chains; ++i) {
         int current_len_for_reduction = len_dist(generator_initial_word);
         std::string start_word = "";
@@ -495,6 +525,11 @@ void generate_rainbow_table(
         }
     }
     outfile.close();
+    g_matrix_running.store(false);
+    if (matrix_thread.joinable()) {
+        matrix_thread.join();
+    }
+    std::cout << "\033[H\033[J";
     std::cout << "\r" << std::string(80, ' ') << "\r";
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
@@ -536,6 +571,8 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
     long long loaded_entries = 0;
     std::cout << CR_BLUE << "[LOADING] Loading rainbow table into memory. This may take a while for large tables..." << RESET << std::endl;
     auto load_start_time = std::chrono::high_resolution_clock::now();
+    g_matrix_running.store(true);
+    std::thread matrix_thread(run_matrix_animation);
     while (std::getline(rainbow_table_file, line)) {
         size_t colon_pos = line.find(':');
         if (colon_pos != std::string::npos) {
@@ -550,6 +587,11 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
         }
     }
     rainbow_table_file.close();
+    g_matrix_running.store(false);
+    if (matrix_thread.joinable()) {
+        matrix_thread.join();
+    }
+    std::cout << "\033[H\033[J";
     auto load_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> load_duration = load_end_time - load_start_time;
     std::cout << "\r" << std::string(80, ' ') << "\r";
@@ -557,6 +599,8 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
     std::cout << CR_BLUE << "\n[CRACKING] Starting rainbow table lookup..." << RESET << std::endl;
     auto crack_start_time = std::chrono::high_resolution_clock::now();
     bool cracked = false;
+    g_matrix_running.store(true);
+    std::thread matrix_thread_crack(run_matrix_animation);
     for (int current_len_for_reduction = assumed_min_len; current_len_for_reduction <= assumed_max_len; ++current_len_for_reduction) {
         if (g_hash_cracked_flag.load()) break;
         for (int i = 0; i < chain_length; ++i) {
@@ -595,6 +639,11 @@ void perform_rainbow_attack(const std::string& target_hash, const std::string& r
             }
         }
     }
+    g_matrix_running.store(false);
+    if (matrix_thread_crack.joinable()) {
+        matrix_thread_crack.join();
+    }
+    std::cout << "\033[H\033[J";
     std::cout << "\r" << std::string(100, ' ') << "\r";
     auto crack_end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> crack_duration = crack_end_time - crack_start_time;
