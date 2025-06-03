@@ -596,7 +596,8 @@ void generate_combinations_iterative_threaded(
         // Générer la prochaine combinaison
         int current_pos = target_length - 1;
         while (current_pos >= start_index_for_remaining) {
-            if (indices[current_pos] < charset.length() - 1) {
+            if (static_cast<size_t>(indices[current_pos]) < charset.length() - 1) {
+
                 indices[current_pos]++;
                 combination_chars[current_pos] = charset[indices[current_pos]];
                 break;
