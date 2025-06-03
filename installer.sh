@@ -21,10 +21,10 @@ spinner() {
     local pid=$1
     local delay=0.1
     local spinstr='|/-\'
-    while ps -p $pid > /dev/null; do
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
         local temp=${spinstr#?}
         printf " [%c] " "$spinstr"
-        spinstr=$temp${spinstr%"$temp"}
+        local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b"
     done
@@ -49,19 +49,19 @@ clear_terminal
 # ASCII Banner with colors - MAINTAINED EXACTLY AS PROVIDED
 echo -e "${C}${BOLD}"
 cat << "EOF"
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣘⡘⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠇⡇⢱⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠳⡢⣄⠀⠀⠀⠀⠀⠀⢸⠄⡇⠸⠀⠀⠀⠀⠀⠀⢀⡤⡾⠁⠀⠀⠀
-⠀⠀⠀⠀⢹⣢⡉⠢⡀⠀⠀⠀⢸⠄⡇⢘⠃⠀⠀⠀⡠⠊⡑⣹⠁⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠱⡜⢄⠘⢢⡀⠀⢸⠁⡇⢸⡄⠀⣠⠊⢀⠌⡴⠁⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠱⡀⠡⡀⠑⡄⠸⠄⡇⢸⠀⡔⠁⡐⠁⡲⠁⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠈⢢⡈⢂⠘⡜⡇⡇⣘⡜⠠⠊⣠⠊⠀⠀⠀⠀⠀⠀⠀⠀
-⠑⠲⢖⡯⠘⣀⠒⠂⠤⢽⡦⡑⠜⢏⠀⡟⠔⡡⣖⡡⠤⠰⠒⣒⠒⣒⣶⠖⠂
-⠀⠀⠀⠉⠓⠲⠅⣉⣀⡐⠠⠉⠊⣼⣼⡤⠚⠩⠀⠂⢀⣉⠰⠔⠒⠉⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡌⡻⢹⡜⡟⢯⡩⣛⢭⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⣠⣾⣳⠥⠒⠁⠀⡇⠀⠙⠲⢕⣞⣦⡀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣘⡘⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠇⡇⢱⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠳⡢⣄⠀⠀⠀⠀⠀⠀⢸⠄⡇⠸⠀⠀⠀⠀⠀⠀⢀⡤⡾⠁⠀⠀⠀
+        ⠀⠀⠀⠀⢹⣢⡉⠢⡀⠀⠀⠀⢸⠄⡇⢘⠃⠀⠀⠀⡠⠊⡑⣹⠁⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠱⡜⢄⠘⢢⡀⠀⢸⠁⡇⢸⡄⠀⣠⠊⢀⠌⡴⠁⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠱⡀⠡⡀⠑⡄⠸⠄⡇⢸⠀⡔⠁⡐⠁⡲⠁⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠀⠈⢢⡈⢂⠘⡜⡇⡇⣘⡜⠠⠊⣠⠊⠀⠀⠀⠀⠀⠀⠀⠀
+v⠲⢖⡯⠘⣀⠒⠂⠤⢽⡦⡑⠜⢏⠀⡟⠔⡡⣖⡡⠤⠰⠒⣒⠒⣒⣶⠖⠂
+        ⠀⠀⠀⠉⠓⠲⠅⣉⣀⡐⠠⠉⠊⣼⣼⡤⠚⠩⠀⠂⢀⣉⠰⠔⠒⠉⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡌⡻⢹⡜⡟⢯⡩⣛⢭⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠀⣠⣾⣳⠥⠒⠁⠀⡇⠀⠙⠲⢕⣞⣦⡀⠀⠀⠀⠀⠀⠀⠀
+        ⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀
 EOF
 echo -e "${R}${BOLD}         __ HASHISH AUTOMATIC INSTALLER __ ${NC}"
 echo -e "${NC}"
@@ -120,7 +120,6 @@ else
     pretty_print $Y "" "  Program will run without custom banner"
 fi
 
-# Copy all Python modules
 find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/null
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 echo -e "${G}  ✓ Files copied${NC}\n"
@@ -158,11 +157,9 @@ echo -e "${G}  ✓ Launcher created${NC}\n"
 echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complète!"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
-pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
+pretty_print $C $BOLD "\n  Pour lancer HASHISH, tapez: ${Y}hashish${NC}"
 sleep 3 # Laisse le temps de lire les messages de fin d'installation
 
-# --- START OF FIX ---
-# Instead of directly calling 'hashish', use 'exec' to replace the current shell
-# process with the hashish command. This ensures the new process inherits
-# the terminal's input/output correctly.
-exec hashish
+# --- SUPPRIMER ou COMMENTER CES LIGNES ---
+# exec hashish
+# --- FIN DE LA SUPPRESSION ---
