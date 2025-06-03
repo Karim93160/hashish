@@ -155,19 +155,10 @@ echo -e "${G}  ✓ Launcher created${NC}\n"
 
 # Installation complete - Message to user
 echo -e "${BL}=========================================================${NC}"
-pretty_print $C $BOLD "\n  Installation complete!"
+pretty_print $C $BOLD "\n  Installation complète!"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
-echo -e "${Y}  Pour lancer Hashish, tapez simplement :${NC}"
-echo -e "    ${B}hashish${NC}\n"
-echo -e "${Y}  Vous devrez peut-être ouvrir une nouvelle session Termux pour que la commande soit disponible.${NC}\n"
+pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
+sleep 3 # Laisse le temps de lire les messages de fin d'installation
 
-# --- Ajout pour le lancement automatique ---
-read -p "$(pretty_print $Y "" "  Voulez-vous lancer HASHISH maintenant ? (o/n) : ")" auto_launch_choice
-if [[ "$auto_launch_choice" =~ ^[Oo]$ ]]; then
-    pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
-    sleep 2 # Laisse le temps de lire le message
-    hashish # Lance le script principal
-else
-    pretty_print $M "" "  HASHISH ne sera pas lancé automatiquement. Lancez-le manuellement avec 'hashish'."
-fi
-# --- Fin de l'ajout ---
+# Lancement automatique de Hashish
+hashish
