@@ -76,12 +76,16 @@ def run_hashcracker_cpp():
     print(CR_BLUE + "--- Launching: Hash Cracker (C++) ---" + RESET)
     time.sleep(1)
     if check_executable(HASHCRACKER_CPP_EXECUTABLE):
-        os.execv(HASHCRACKER_CPP_EXECUTABLE, [HASHCRACKER_CPP_EXECUTABLE])
+        try:
+            subprocess.run([HASHCRACKER_CPP_EXECUTABLE])
+            print(CR_GREEN + "\n[INFO] Hash Cracker terminé. Fin du script." + RESET)
+        except Exception as e:
+            print(CR_RED + f"[ERROR] Impossible de lancer le binaire C++ : {e}" + RESET)
     else:
         print(CR_RED + "[ERROR] C++ binary not found or not executable!" + RESET)
         print(CR_YELLOW + f" → Expected: {HASHCRACKER_CPP_EXECUTABLE}" + RESET)
         print(CR_MAGENTA + " ➜ Compile `hashcracker.cpp` and place the binary in 'modules/'." + RESET)
-        input(CR_BLUE + "\nPress Enter to return to menu..." + RESET)
+    sys.exit(0)
 
 
 def run_module(module_name, script_filename):
