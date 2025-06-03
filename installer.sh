@@ -21,10 +21,10 @@ spinner() {
     local pid=$1
     local delay=0.1
     local spinstr='|/-\'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+    while ps -p $pid > /dev/null; do
         local temp=${spinstr#?}
         printf " [%c] " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
+        spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b"
     done
@@ -120,6 +120,7 @@ else
     pretty_print $Y "" "  Program will run without custom banner"
 fi
 
+# Copy all Python modules
 find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/null
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 echo -e "${G}  ✓ Files copied${NC}\n"
@@ -150,21 +151,18 @@ cat > "$INSTALL_DIR/hashish" <<EOF
 #!/bin/bash
 exec python3 "$INSTALL_DIR/hashish.py" "\$@"
 EOF
-# Le marqueur EOF ci-dessus DOIT être la seule chose sur sa ligne, sans espaces/tabs.
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${G}  ✓ Launcher created${NC}\n"
 
-# Installation complete - Message to user and auto-launch
+# Installation complete - Message to user
 echo -e "${BL}=========================================================${NC}"
 pretty_print $C $BOLD "\n  Installation complète!"
 echo -e "${M}  HASHISH est maintenant prêt à l'emploi.${NC}\n"
+pretty_print $C $BOLD "\n  Lancement automatique de HASHISH..."
+sleep 3 # Laisse le temps de lire les messages de fin d'installation
 
-# --- Logique de lancement automatique ---
-pretty_print $C $BOLD "\n  Lancement automatique de HASHISH dans 3 secondes..."
-sleep 3 # Donne au terminal le temps de se stabiliser
-
-# Efface l'écran avant le lancement pour une interface propre
-clear_terminal
-
-# Lance hashish de manière interactive
-hashish
+# --- START OF FIX ---
+# Instead of directly calling 'hashish', use 'exec' to replace the current shell
+# process with the hashish command. This ensures the new process inherits
+# the terminal's input/output correctly.
+exec hashish
