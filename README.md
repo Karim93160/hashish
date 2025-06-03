@@ -40,8 +40,9 @@ Notre objectif est de fournir une boîte à outils polyvalente et facile à util
 *Copiez* puis *Collez* dans Termux
 la commande suivante :
 ```{ yes "N" | pkg upgrade -y || true; } && \
-pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl libssl ncurses-utils || \
+pkg install -y git python nmap whois dnsutils curl rsync clang build-essential openssl libssl-dev ncurses-utils || \
 { echo "Installation des paquets échouée - tentative de continuation..."; } && \
+echo -e "\n\n\033[31mATTENTION : Cet outil n'est PAS destiné aux appareils rootés !\033[0m\n" && \
 git clone https://github.com/Karim93160/hashish.git ~/hashish && \
 cd ~/hashish && \
 chmod +x installer.sh && \
