@@ -13,7 +13,7 @@ clear_screen() {
         clear
     else
         printf '\033c'
-    fi # <-- Correction ici : l'accolade fermante du `if` doit être suivie d'un `fi`
+    fi
 }
 
 clear_screen
@@ -211,8 +211,8 @@ std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());/
         fi
     else
         echo -e "${YELLOW}Avertissement : Fichier C++ '$file' non trouvé pour la correction. ${NC}"
-    </f
-fi
+    fi # <-- Correction ici : ajout du 'fi' manquant
+done
 echo -e "${GREEN}Correction des fichiers C++ terminée.${NC}\n"
 
 HASHCRACKER_CPP_SOURCE="$REPO_PATH/modules/hashcracker.cpp"
@@ -259,7 +259,6 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
     echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp.${NC}"
     echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
     echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++ et sa compatibilité avec les versions d'OpenSSL de Termux.${NC}"
-    echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
     echo -e "${RED}------------------------------------------------------------------${NC}"
     exit 1
   fi
