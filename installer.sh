@@ -74,10 +74,13 @@ pretty_print "$G" "" "  ✓ Files copied\n"
 pretty_print "$Y" "" "  [3/5] Compiling modules..."
 (
     # Compilation de hashcracker.cpp avec les options spécifiées.
-    # La redirection des erreurs est temporairement supprimée pour le débogage.
-    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -Wall -O3 -std=c++17 -fopenmp -lcrypto -lssl -lstdc++fs
+    # IMPORTANT: Ajout de -pthread pour std::thread et vérification des bibliothèques.
+    # Suppression de -O3 pour le moment car -Wall -Wextra -pedantic suffisent pour le débogage.
+    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -std=c++17 -Wall -Wextra -pedantic -lssl -lcrypto -pthread -fopenmp
 
-    # Compilation de rainbow_generator.cpp
+    # Compilation de rainbow_generator.cpp (les options ici semblent correctes)
+    # Note: Si rainbow_generator.cpp utilise aussi std::filesystem ou OpenMP,
+    # il faudra adapter ces options également. Pour l'instant, je garde celles que tu avais.
     clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
 ) & # Le `&` permet au spinner de s'afficher pendant la compilation.
 spinner $!
