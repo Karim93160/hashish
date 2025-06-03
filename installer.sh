@@ -13,7 +13,7 @@ clear_screen() {
         clear
     else
         printf '\033c'
-    fi
+    }
 }
 
 clear_screen
@@ -91,8 +91,8 @@ install_package() {
 
 # Liste des paquets essentiels pour Termux
 # build-essential inclut g++ et make
-# libssl-dev fournit les en-têtes pour OpenSSL pour la compilation C++
-REQUIRED_PKGS=("clang" "build-essential" "openssl" "libssl-dev" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
+# `libssl-dev` n'existe pas directement, `openssl` suffit pour la compilation dans Termux.
+REQUIRED_PKGS=("clang" "build-essential" "openssl" "git" "python" "ncurses-utils" "rsync" "curl" "nmap" "whois" "dnsutils")
 
 for pkg_name in "${REQUIRED_PKGS[@]}"; do
     if ! dpkg -s "$pkg_name" &>/dev/null; then
@@ -138,7 +138,7 @@ if [ ! -f "$REPO_PATH/hashish.py" ]; then
   exit 1
 fi
 if [ ! -d "$REPO_PATH/modules" ]; then
-  echo -e "${RED}Erreur : Le dossier 'modules' est introuvable dans '$REPO_PATH'. Assurez-vous que les modules sont bien dans un sous-dossier 'modules'.${NC}"
+  echo -e "${RED}Erreur : Le dossier 'modules' est introuvable dans '$REPO_PATH'. Assurez-se que les modules sont bien dans un sous-dossier 'modules'.${NC}"
   exit 1
 fi
 if [ ! -f "$REPO_PATH/banner-hashish.txt" ]; then
@@ -262,7 +262,7 @@ if [ -f "$HASHCRACKER_CPP_SOURCE" ]; then
     echo -e "${RED}------------------------------------------------------------------${NC}"
     echo -e "${RED}ERREUR CRITIQUE : Échec de la compilation de hashcracker.cpp.${NC}"
     echo -e "${YELLOW}Veuillez examiner attentivement les messages d'erreur de g++ ci-dessus pour le diagnostic.${NC}"
-    echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++.${NC}"
+    echo -e "${YELLOW}Les causes possibles incluent des bibliothèques OpenSSL manquantes, des en-têtes non trouvés, ou des erreurs dans le code source C++ et sa compatibilité avec les versions d'OpenSSL de Termux.${NC}"
     echo -e "${YELLOW}Le module Hash Cracker C++ ne sera PAS disponible ou ne fonctionnera pas correctement.${NC}"
     echo -e "${RED}------------------------------------------------------------------${NC}"
     exit 1
