@@ -176,8 +176,7 @@ double run_benchmark(const EVP_MD* digest_type, const std::string& charset, int 
     #else
     std::string test_input_base = "bench_input_0";
     for (int j = 0; j < benchmark_attempts_per_thread * num_threads; ++j) {
-        calculate_hash_openssl(test_input_base + std::to_string(j), digest_type);
-        benchmark_total_hashes++;
+        calculate_hash_openssl(test_input_base + std::to_string(j), digest_total_hashes++;
     }
     #endif
     auto benchmark_end_time = std::chrono::high_resolution_clock::now();
@@ -215,14 +214,23 @@ std::string get_executable_dir() {
     }
 #endif
 }
+
+// CORRECTION ICI pour la fonction reduce_hash
 std::string reduce_hash(const std::string& hash, size_t target_len, const std::string& charset, int r_index) {
     if (charset.empty() || target_len == 0) return "";
     std::string reduced_string = "";
-    std::string seed_str = hash + std::to_string(r_index);
-    std::hash<std::string> hasher;
-    size_t seed_val = hasher(seed_str);
-    std::mt19937 generator(static_cast<unsigned int>(seed_val));
+
+    // Utilisation de std::seed_seq avec une graine plus robuste
+    std::vector<unsigned int> seed_data;
+    for (char c : hash) {
+        seed_data.push_back(static_cast<unsigned int>(c));
+    }
+    seed_data.push_back(static_cast<unsigned int>(r_index)); // Inclure r_index pour des étapes déterministes
+
+    std::seed_seq seed_sequence(seed_data.begin(), seed_data.end());
+    std::mt19937 generator(seed_sequence);
     std::uniform_int_distribution<> distribution(0, charset.length() - 1);
+
     for (size_t i = 0; i < target_len; ++i) {
         reduced_string += charset[distribution(generator)];
     }
