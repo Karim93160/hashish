@@ -657,7 +657,8 @@ void perform_bruteforce_attack(
 
     display_loading_animation(CR_CYAN + std::string("[BENCHMARK] Warming up hash engine..."), 2000); // Animation avant benchmark
 
-    double hashes_per_second = run_benchmark(digest_type, charset_str, num_threads_to_use);
+    double hashes_per_second = run_benchmark(digest_type, num_threads_to_use);
+
 
     if (hashes_per_second <= 0) {
         std::cerr << CR_RED << "[ERROR] Benchmark failed or returned zero H/s. Cannot estimate time." << RESET << std::endl;
