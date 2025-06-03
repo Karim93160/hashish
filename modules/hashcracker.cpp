@@ -718,7 +718,8 @@ void perform_bruteforce_attack(
 
             int pos = current_prefix_len_for_parallel - 1;
             while (pos >= 0) {
-                if (current_indices[pos] < charset_str.length() - 1) {
+                if (static_cast<size_t>(current_indices[pos]) < charset_str.length() - 1) {
+
                     current_indices[pos]++;
                     break;
                 } else {
@@ -739,7 +740,8 @@ void perform_bruteforce_attack(
 
 #ifdef _OPENMP
         #pragma omp parallel for shared(g_hash_cracked_flag, g_found_password, g_total_attempts_bruteforce, g_cout_mutex) schedule(dynamic) num_threads(num_threads_to_use)
-        for (long long i = 0; i < initial_prefixes.size(); ++i) {
+        for (size_t i = 0; i < initial_prefixes.size(); ++i) {
+
             if (g_hash_cracked_flag.load()) {
                 continue;
             }
