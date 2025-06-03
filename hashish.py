@@ -36,13 +36,16 @@ CR_DARK_GRAY = "\033[90m"
 
 # --- Chemins globaux ---
 TERMUX_BIN_DIR = "/data/data/com.termux/files/usr/bin"
+
 try:
     CURRENT_SCRIPT_PATH = os.path.abspath(__file__)
 except NameError:
     CURRENT_SCRIPT_PATH = os.path.abspath(sys.argv[0])
+
 CURRENT_SCRIPT_DIR = os.path.dirname(CURRENT_SCRIPT_PATH)
 
-if CURRENT_SCRIPT_DIR == TERMUX_BIN_DIR:
+# Gestion du mode Termux vs normal
+if CURRENT_SCRIPT_DIR.startswith(TERMUX_BIN_DIR):
     MODULES_PATH = os.path.join(TERMUX_BIN_DIR, "modules")
     BANNER_PATH = os.path.join(TERMUX_BIN_DIR, "banner-hashish.txt")
 else:
@@ -53,11 +56,13 @@ HASHCRACKER_CPP_EXECUTABLE = os.path.join(MODULES_PATH, "hashcracker")
 
 
 def clear_screen():
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        if os.system("clear") != 0:
-            print("\n" * 100)
+    try:
+        if os.name == "nt":
+            os.system("cls")
+        else:
+            os.system("clear")
+    except:
+        print("\n" * 100)
 
 
 def color_generator():
@@ -75,11 +80,11 @@ def animate_banner(delay=0.01):
                 print(next(colors) + line.rstrip() + RESET)
                 time.sleep(delay)
     except FileNotFoundError:
-        print(CR_RED + "[ERROR] Banner file not found! " + BANNER_PATH + RESET)
-        print(CR_YELLOW + "         Continuing without banner..." + RESET)
+        print(CR_RED + "[ERROR] Banner file not found!" + RESET)
+        print(CR_YELLOW + f"         → Expected at: {BANNER_PATH}" + RESET)
         time.sleep(2)
     except Exception as e:
-        print(CR_RED + f"[ERROR] Banner animation error: {e}" + RESET)
+        print(CR_RED + f"[ERROR] Banner animation failed: {e}" + RESET)
         time.sleep(2)
 
 
@@ -102,8 +107,8 @@ def run_hashcracker_cpp():
         except Exception as e:
             print(CR_RED + f"[ERROR] Could not execute C++ binary: {e}" + RESET)
     else:
-        print(CR_RED + "[ERROR] C++ executable not found or not executable." + RESET)
-        print(CR_YELLOW + "  -> Compile 'hashcracker.cpp' and place the binary in modules." + RESET)
+        print(CR_RED + "[ERROR] C++ binary not found or not executable." + RESET)
+        print(CR_YELLOW + "  → Compile 'hashcracker.cpp' and place the binary in 'modules/'." + RESET)
     print(CR_RED + "\n[INFO] Please relaunch hashish.py." + RESET)
     time.sleep(2)
     sys.exit(0)
@@ -172,5 +177,5 @@ if __name__ == "__main__":
         print(CR_GREEN + "\n[INFO] Exiting HASHISH. Stay safe and ethical! 👋" + RESET)
         sys.exit(0)
     except Exception as e:
-        print(CR_RED + f"[CRITICAL ERROR] An unhandled error occurred: {e}" + RESET)
+        print(CR_RED + f"[CRITICAL ERROR] Unhandled exception: {e}" + RESET)
         sys.exit(1)
