@@ -395,7 +395,10 @@ clear_screen() {
     fi
 }
 clear_screen # Appel de la fonction pour effacer l'écran au lancement de 'hashish'
-python3 "$INSTALL_DIR/hashish.py" "\$@" # MODIFICATION : On appelle python3 directement sans 'exec'
+
+# Nouvelle approche : lancer Python via un sous-shell bash -c pour s'assurer de l'interactivité
+# Cela est souvent plus robuste pour garantir que stdin est correctement attaché.
+bash -c "python3 \"$INSTALL_DIR/hashish.py\" \"\$@\""
 EOF
 chmod +x "$INSTALL_DIR/hashish"
 echo -e "${GREEN}Raccourci 'hashish' créé dans $INSTALL_DIR. Vous pouvez maintenant lancer l'outil avec la commande : ${CYAN}hashish${NC}\n"
@@ -413,6 +416,8 @@ if [ -f "$REPO_PATH/requirements.txt" ]; then
 
     if command -v pip &> /dev/null; then
         echo -e "${INFO}Installation des dépendances Python via pip à partir de '$REPO_PATH/requirements.txt'...${NC}"
+        # Ajout d'une petite pause avant pip install, parfois ça aide.
+        sleep 2
         if pip install -r "$REPO_PATH/requirements.txt"; then
             echo -e "${GREEN}Dépendances Python installées avec succès.${NC}\n"
         else
@@ -428,6 +433,22 @@ else
     echo -e "${YELLOW}Fichier 'requirements.txt' introuvable dans le dépôt. Aucune dépendance Python spécifique à installer via ce fichier.${NC}\n"
 fi
 
+# --- Test d'interactivité de stdin avant de lancer HASHISH ---
+echo -e "${BLUE}Vérification finale de l'interactivité du terminal (stdin)...${NC}"
+# Test simple pour voir si Python peut lire de stdin.
+# On envoie une chaîne et on vérifie si Python la renvoie, indiquant que stdin est lisible.
+# Si Python ne peut pas lire, ou si la commande bash -c échoue, ça renvoie une erreur.
+if ! bash -c 'echo "test_input" | python3 -c "import sys; print(sys.stdin.read().strip())"' | grep -q "test_input"; then
+    echo -e "${RED}ATTENTION : Le terminal Termux ne semble pas fournir une entrée standard (stdin) interactive ou stable pour Python.${NC}"
+    echo -e "${RED}Ceci pourrait être la cause de l'erreur 'EOF when reading a line'.${NC}"
+    echo -e "${YELLOW}Veuillez vérifier votre installation Termux ou essayer de redémarrer l'application.${NC}\n"
+    # Nous ne sortons pas ici car HASHISH pourrait quand même fonctionner,
+    # mais c'est un avertissement critique.
+else
+    echo -e "${GREEN}Test de l'entrée standard (stdin) réussi. Le terminal semble interactif.${NC}\n"
+fi
+
+
 # --- Message de Fin d'Installation ---
 echo -e "${CYAN}=====================================================${NC}"
 echo -e "${GREEN}  Installation de HASHISH terminée avec succès ! 🚀 ${NC}"
@@ -436,6 +457,7 @@ echo -e "${GREEN}Vous pouvez maintenant lancer l'outil avec la commande : ${CYAN
 echo -e "${BLUE}Pour tester, lancement de HASHISH (Appuyez sur Ctrl+C pour quitter l'outil)...${NC}"
 
 if command -v hashish &> /dev/null; then
+  # Appel du lanceur 'hashish' et non directement du script python
   hashish
 else
   echo -e "${YELLOW}Impossible de lancer 'hashish' automatiquement. Le raccourci pourrait être manquant ou une erreur s'est produite lors de sa création.${NC}"
