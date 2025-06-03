@@ -407,7 +407,13 @@ std::vector<std::string> generate_word_variations(const std::string& word) {
     }
     
     // Règle 4: Années courantes (ajustable)
-    int current_year = std::chrono::duration_cast<std::chrono::years>(std::chrono::system_clock::now().time_since_epoch()).count() + 1970; // Approximation de l'année courante
+        // Pour obtenir l'année courante de manière fiable en C++17 et versions antérieures,
+    // il est préférable d'utiliser les fonctions de la bibliothèque C <ctime>.
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    std::tm* local_tm = std::localtime(&now_c);
+    int current_year = (local_tm->tm_year + 1900); // tm_year est l'année depuis 1900
+
     variations.push_back(word + std::to_string(current_year));
     variations.push_back(word + std::to_string(current_year % 100)); // ex: 24, 25
 
