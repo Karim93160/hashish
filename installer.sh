@@ -71,20 +71,34 @@ find "$REPO_PATH/modules/" -name "*.py" -exec cp {} "$MODULES_DIR/" \; 2>/dev/nu
 [[ -d "$REPO_PATH/wordlists" ]] && cp -r "$REPO_PATH/wordlists/"* "$WORDLISTS_DIR/" 2>/dev/null
 pretty_print "$G" "" "  ✓ Files copied\n"
 
-pretty_print "$Y" "" "  [3/5] Compiling modules..."
+pretty_print "$Y" "" "  [3/5] Compiling C++ modules..."
 (
-    # Compilation de hashcracker.cpp avec les options spécifiées.
-    # IMPORTANT: Ajout de -pthread pour std::thread et vérification des bibliothèques.
-    # Suppression de -O3 pour le moment car -Wall -Wextra -pedantic suffisent pour le débogage.
-    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -std=c++17 -Wall -Wextra -pedantic -lssl -lcrypto -pthread -fopenmp
+    # Compilation de hashcracker.cpp
+    pretty_print "$BL" "" "    Compiling hashcracker.cpp (without OpenMP for testing)..."
+    # *** MODIFICATION: Suppression de -fopenmp ***
+    clang++ "$REPO_PATH/modules/hashcracker.cpp" -o "$MODULES_DIR/hashcracker" -std=c++17 -Wall -Wextra -pthread -lcrypto -lssl
+    if [ $? -ne 0 ]; then
+        pretty_print "$R" "$BLINK" "    ERROR: Compilation of hashcracker.cpp failed!"
+        exit 1
+    fi
+    pretty_print "$G" "" "    ✓ hashcracker compiled successfully."
 
-    # Compilation de rainbow_generator.cpp (les options ici semblent correctes)
-    # Note: Si rainbow_generator.cpp utilise aussi std::filesystem ou OpenMP,
-    # il faudra adapter ces options également. Pour l'instant, je garde celles que tu avais.
-    clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" -O3 -Wall -std=c++17 -lssl -lcrypto -lpthread -lc++ -lc++_shared
-) & # Le `&` permet au spinner de s'afficher pendant la compilation.
+    # Compilation de rainbow_generator.cpp
+    if [[ -f "$REPO_PATH/modules/rainbow_generator.cpp" ]]; then
+        pretty_print "$BL" "" "    Compiling rainbow_generator.cpp (without OpenMP for testing)..."
+        # *** MODIFICATION: Suppression de -fopenmp ***
+        clang++ "$REPO_PATH/modules/rainbow_generator.cpp" -o "$MODULES_DIR/rainbow_generator" -std=c++17 -Wall -Wextra -pthread -lcrypto -lssl
+        if [ $? -ne 0 ]; then
+            pretty_print "$R" "$BLINK" "    ERROR: Compilation of rainbow_generator.cpp failed!"
+            exit 1
+        fi
+        pretty_print "$G" "" "    ✓ rainbow_generator compiled successfully."
+    else
+        pretty_print "$Y" "" "    [INFO] rainbow_generator.cpp not found, skipping compilation."
+    fi
+) &
 spinner $!
-pretty_print "$G" "" "  ✓ Compilation finished\n"
+pretty_print "$G" "" "  ✓ All C++ modules processed.\n"
 
 pretty_print "$Y" "" "  [4/5] Setting permissions..."
 chmod -R +x "$MODULES_DIR"
